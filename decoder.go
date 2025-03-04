@@ -10,13 +10,11 @@ import (
 	"unsafe"
 )
 
-// TODO: separate float decoder to separate type.
+var ErrDecoderNotinitialized = errors.New("gosp: Decoder: not initialized")
 
-var ErrLPCMDecoderNotinitialized = errors.New("gosp: LPCMDecoder: not initialized")
-
-// LPCMDecoder is a linear pulse-code modulation decoder.
+// Decoder is a linear PCM and floating-point decoder.
 // This decoder can convert binary data into samples.
-type LPCMDecoder[F Frame[T], T Type] struct {
+type Decoder[F Frame[T], T Type] struct {
 	r                         io.Reader
 	channels, byteSize        int
 	bytesRead, samplesDecoded atomic.Int64
@@ -24,14 +22,14 @@ type LPCMDecoder[F Frame[T], T Type] struct {
 	initialized               bool
 }
 
-func NewLPCMDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *LPCMDecoder[F, T] {
+func NewDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *Decoder[F, T] {
 	// Apply encoding options.
 	var cfg EncodingConfig
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
-	return &LPCMDecoder[F, T]{
+	return &Decoder[F, T]{
 		r:           r,
 		channels:    len(*new(F)),
 		byteSize:    int(unsafe.Sizeof(*new(T))),
@@ -41,16 +39,16 @@ func NewLPCMDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *LP
 }
 
 // Decode reads from the internal [io.Reader] and decodes into the sample slice.
-func (d *LPCMDecoder[F, T]) Decode(s []F) error {
+func (d *Decoder[F, T]) Decode(s []F) error {
 	if !d.initialized {
-		return ErrLPCMDecoderNotinitialized
+		return ErrDecoderNotinitialized
 	}
 
 	buf := make([]byte, len(s)*d.channels*d.byteSize)
 
 	bytesRead, err := d.r.Read(buf)
 	if err != nil {
-		return fmt.Errorf("gosp: LPCMDecoder.Decode: reading bytes into buffer: %w", err)
+		return fmt.Errorf("gosp: Decoder.Decode: reading bytes into buffer: %w", err)
 	}
 
 	d.bytesRead.Add(int64(bytesRead))
@@ -61,16 +59,16 @@ func (d *LPCMDecoder[F, T]) Decode(s []F) error {
 		samplesDecoded := d.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)), buf)
 		d.samplesDecoded.Add(int64(samplesDecoded))
 	case 2:
-		panic("gosp: LPCMDecoder.Decode: implement stereo decoding")
+		panic("gosp: Decoder.Decode: implement stereo decoding")
 	default:
-		panic("gosp: LPCMDecoder.Decode: implement multi-channel decoding")
+		panic("gosp: Decoder.Decode: implement multi-channel decoding")
 	}
 
 	return nil
 }
 
 // convertMono returns the number of samples converted.
-func (d *LPCMDecoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
+func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 	switch d.byteSize {
 	case 1: // 8 bit
 		minLen := min(len(dst), len(src))

@@ -200,7 +200,7 @@ func TestLPCMDecoderDecode(t *testing.T) {
 func testDecodeMono[T gosp.Type](t *testing.T, input []byte, want []gosp.Mono[T]) {
 	t.Helper()
 
-	decoder := gosp.NewLPCMDecoder[gosp.Mono[T], T](bytes.NewReader(input))
+	decoder := gosp.NewDecoder[gosp.Mono[T], T](bytes.NewReader(input))
 
 	samples := make([]gosp.Mono[T], len(want))
 
