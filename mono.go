@@ -13,3 +13,7 @@ func (m Mono[T]) M() T {
 func ToMono[T Type](sample T) Mono[T] {
 	return Mono[T]{sample}
 }
+
+func ZeroMono[T Type]() Mono[T] {
+	return Mono[T]{Zero[T]()}
+}

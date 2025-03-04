@@ -88,7 +88,7 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 	switch e.byteSize {
 	case 1: // 8 bit
 		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 {
+		if isUnsigned[T]() {
 			// uint8
 			n, _ := buf.Write(unsafe.Slice((*uint8)(unsafe.Pointer(&src[0])), len(src)))
 			return n
@@ -119,7 +119,7 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		return len(src)
 	case 4: // 32 bit
 		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 || T(maxInt32)+1 < 0 {
+		if isUnsigned[T]() || isSigned[T]() {
 			// uint32 & int32
 			if e.bigEndian {
 				for i := range len(src) {
@@ -156,7 +156,7 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		return len(src)
 	case 8: // 64 bit
 		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 || T(maxInt64)+1 < 0 {
+		if isUnsigned[T]() || isSigned[T]() {
 			// uint64 & int64
 			if e.bigEndian {
 				for i := range len(src) {

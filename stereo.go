@@ -84,3 +84,8 @@ func MonoToStereo[T Type](s Mono[T]) Stereo[T] {
 func ToStereo[T Type](l, r T) Stereo[T] {
 	return Stereo[T]{l, r}
 }
+
+func ZeroStereo[T Type]() Stereo[T] {
+	zero := Zero[T]()
+	return Stereo[T]{zero, zero}
+}

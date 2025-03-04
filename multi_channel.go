@@ -78,6 +78,14 @@ func (c MultiChannel[T]) MultiplyMC(x MultiChannel[T]) MultiChannel[T] {
 	return c
 }
 
+func (c MultiChannel[T]) Set(x T) MultiChannel[T] {
+	for i := range c {
+		c[i] = x
+	}
+
+	return c
+}
+
 func (c MultiChannel[T]) Subtract(x T) MultiChannel[T] {
 	for i := range c {
 		c[i] -= x
@@ -105,5 +113,12 @@ func ToMultiChannel[T Type](samples ...T) MultiChannel[T] {
 }
 
 func ZeroMultiChannel[T Type](n int) MultiChannel[T] {
-	return make(MultiChannel[T], n)
+	c := make(MultiChannel[T], n)
+
+	switch any(T(0)).(type) {
+	case uint8, uint16, uint32, uint64:
+		c.Set(Zero[T]())
+	}
+
+	return c
 }

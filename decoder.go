@@ -94,8 +94,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 	case 1: // 8 bit
 		minLen := min(len(dst), len(src))
 
-		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 {
+		if isUnsigned[T]() {
 			// uint8
 			return copy(unsafe.Slice((*uint8)(unsafe.Pointer(&dst[0])), minLen), src)
 		}
@@ -110,8 +109,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 	case 2: // 16 bit
 		minLen := min(len(dst), len(src)/d.byteSize)
 
-		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 {
+		if isUnsigned[T]() {
 			// uint16
 			buf := unsafe.Slice((*uint16)(unsafe.Pointer(&dst[0])), minLen)
 			if d.bigEndian {
@@ -143,8 +141,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 	case 4: // 32 bit
 		minLen := min(len(dst), len(src)/d.byteSize)
 
-		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 {
+		if isUnsigned[T]() {
 			// uint32
 			buf := unsafe.Slice((*uint32)(unsafe.Pointer(&dst[0])), minLen)
 			if d.bigEndian {
@@ -160,8 +157,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 			return minLen
 		}
 
-		// Abuse underflow rules to deduce specific type.
-		if T(maxInt32)+1 < 0 {
+		if isSigned[T]() {
 			// int32
 			buf := unsafe.Slice((*int32)(unsafe.Pointer(&dst[0])), minLen)
 			if d.bigEndian {
@@ -193,8 +189,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 	case 8: // 64 bit
 		minLen := min(len(dst), len(src)/d.byteSize)
 
-		// Abuse overflow rules to deduce specific type.
-		if T(0)-1 > 0 {
+		if isUnsigned[T]() {
 			// uint32
 			buf := unsafe.Slice((*uint64)(unsafe.Pointer(&dst[0])), minLen)
 			if d.bigEndian {
@@ -210,8 +205,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 			return minLen
 		}
 
-		// Abuse underflow rules to deduce specific type.
-		if T(maxInt64)+1 < 0 {
+		if isSigned[T]() {
 			// int64
 			buf := unsafe.Slice((*int64)(unsafe.Pointer(&dst[0])), minLen)
 			if d.bigEndian {

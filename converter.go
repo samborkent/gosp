@@ -2,6 +2,7 @@ package gsp
 
 import (
 	"context"
+	"math"
 	"runtime"
 	"unsafe"
 )
@@ -219,7 +220,7 @@ func convertStereoToMultiChannel[O Type, I Type](input Stereo[I]) (output MultiC
 
 func convertMultiChannelToMono[O Type, I Type](input MultiChannel[I]) (output Mono[O]) {
 	if len(input) == 0 {
-		return Mono[O]{}
+		return ZeroMono[O]()
 	}
 
 	return ToMono(convertType[O](input.M()))
@@ -227,7 +228,7 @@ func convertMultiChannelToMono[O Type, I Type](input MultiChannel[I]) (output Mo
 
 func convertMultiChannelToStereo[O Type, I Type](input MultiChannel[I]) (output Stereo[O]) {
 	if len(input) == 0 {
-		return Stereo[O]{}
+		return ZeroStereo[O]()
 	}
 
 	switch len(input) {
@@ -253,7 +254,34 @@ func convertMultiChannelToStereo[O Type, I Type](input MultiChannel[I]) (output 
 }
 
 func convertMultiChannel[O Type, I Type](input MultiChannel[I]) (output MultiChannel[O]) {
-	panic("gsp: convertMultiChannel: not implemented")
+	if len(output) == 0 {
+		return MultiChannel[O]{}
+	}
+
+	switch len(input) {
+	case 0:
+		return ZeroMultiChannel[O](len(output))
+	case 1:
+		return convertMonoToMultiChannel[O](ToMono(input[0]))
+	case 2:
+		return convertStereoToMultiChannel[O](ToStereo(input[L], input[R]))
+	default:
+		switch len(output) {
+		case 1:
+			return MultiChannel[O]{convertMultiChannelToMono[O](input).M()}
+		case 2:
+			out := convertMultiChannelToStereo[O](input)
+			return MultiChannel[O]{out[L], out[R]}
+		default:
+			out := ZeroMultiChannel[O](len(output))
+
+			for i := range min(len(input), len(output)) {
+				out[i] = convertType[O](input[i])
+			}
+
+			return out
+		}
+	}
 }
 
 func convertType[O Type, I Type](in I) (out O) {
@@ -261,14 +289,97 @@ func convertType[O Type, I Type](in I) (out O) {
 	case 1:
 		switch unsafe.Sizeof(out) {
 		case 1:
-			// uint8/int8 -> uint8/int8
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint8 -> uint8
+					return O(in)
+				}
+
+				// uint8 -> int8
+				return O(int8(int16(in) - int16(zeroUint8)))
+			}
+
+			if isUnsigned[O]() {
+				// int8 -> uint8
+				return O(uint8(int16(in) + int16(zeroUint8)))
+			}
+
+			// int8 -> int8
 			return O(in)
 		case 2:
-			panic("gsp: convertType: 8-bit to 16-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint8 -> uint16
+					return O(uint16(in) << 8)
+				}
+
+				// uint8 -> int16
+				return O((int16(in) - int16(zeroUint8)) << 8)
+			}
+
+			if isUnsigned[O]() {
+				// int8 -> uint16
+				return O((int16(in) + int16(zeroUint8)) << 8)
+			}
+
+			// int8 -> int16
+			return O(int16(in) << 8)
 		case 4:
-			panic("gsp: convertType: 8-bit to 32-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint8 -> uint32
+					return O(uint32(in) << 24)
+				}
+
+				if isSigned[O]() {
+					// uint8 -> int32
+					return O(int32(int16(in)-int16(zeroUint8)) << 24)
+				}
+
+				// uint8 -> float32
+				return O(float32(int16(in)-int16(zeroUint8)) / (-math.MinInt8))
+			}
+
+			if isUnsigned[O]() {
+				// int8 -> uint32
+				return O(uint32(int16(in)+int16(zeroUint8)) << 24)
+			}
+
+			if isSigned[O]() {
+				// int8 -> int32
+				return O(int32(in) << 24)
+			}
+
+			// int8 -> float32
+			return O(float32(in) / (-math.MinInt8))
 		case 8:
-			panic("gsp: convertType: 8-bit to 64-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint8 -> uint64
+					return O(uint64(in) << 56)
+				}
+
+				if isSigned[O]() {
+					// uint8 -> int64
+					return O(int64(int16(in)-int16(zeroUint8)) << 56)
+				}
+
+				// uint8 -> float64
+				return O(float64(int16(in)-int16(zeroUint8)) / (-math.MinInt8))
+			}
+
+			if isUnsigned[O]() {
+				// int8 -> uint64
+				return O(uint64(int16(in)+int16(zeroUint8)) << 56)
+			}
+
+			if isSigned[O]() {
+				// int8 -> int64
+				return O(int64(in) << 56)
+			}
+
+			// int8 -> float64
+			return O(float64(in) / (-math.MinInt8))
 		default:
 			panic("gsp: convertType: unknown output bit size encountered")
 		}
@@ -277,8 +388,7 @@ func convertType[O Type, I Type](in I) (out O) {
 		case 1:
 			panic("gsp: convertType: 16-bit to 8-bit conversion not implemented")
 		case 2:
-			// uint16/int16 -> uint16/int16
-			return O(in)
+			panic("gsp: convertType: 16-bit to 16-bit conversion not implemented")
 		case 4:
 			panic("gsp: convertType: 16-bit to 32-bit conversion not implemented")
 		case 8:
