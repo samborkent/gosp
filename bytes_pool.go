@@ -11,7 +11,7 @@ type BytesPool struct {
 	pool sync.Pool
 }
 
-func NewBytesPool(size int) *BytesPool {
+func NewBytesPool() *BytesPool {
 	return &BytesPool{
 		pool: sync.Pool{
 			New: func() any {

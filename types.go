@@ -1,23 +1,33 @@
 package gosp
 
-import "golang.org/x/exp/constraints"
+type floats interface {
+	float32 | float64
+}
+
+type ints interface {
+	int8 | int16 | int32 | int64
+}
 
 type SignedType interface {
-	constraints.Float | constraints.Signed
+	ints | floats
+}
+
+type UnsignedType interface {
+	uint8 | uint16 | uint32 | uint64
 }
 
 type Type interface {
-	SignedType | constraints.Unsigned
+	SignedType | UnsignedType
 }
 
 type (
-	Mono                 Type
+	Mono[T Type]         [1]T
 	Stereo[T Type]       [2]T
 	MultiChannel[T Type] []T
 )
 
 type SampleType[T Type] interface {
-	Mono | Stereo[T] | MultiChannel[T]
+	Mono[T] | Stereo[T] | MultiChannel[T]
 }
 
 // Implementations must not retain p.
