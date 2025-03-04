@@ -1,2 +1,2 @@
-# gosp
+# gsp
 Go Signal Processing

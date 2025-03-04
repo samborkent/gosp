@@ -1,4 +1,4 @@
-package gosp
+package gsp
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-var ErrEncoderNotinitialized = errors.New("gosp: Encoder: not initialized")
+var ErrEncoderNotinitialized = errors.New("gsp: Encoder: not initialized")
 
 // Encoder is a linear PCM and floating-point encoder.
 // This encoder can convert samples into their binary representation.
@@ -67,14 +67,14 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 		samplesEncoded := e.convertMono(buf, unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)))
 		e.samplesEncoded.Add(int64(samplesEncoded))
 	case 2:
-		panic("gosp: Encoder.Encode: stereo encoding not implemented")
+		panic("gsp: Encoder.Encode: stereo encoding not implemented")
 	default:
-		panic("gosp: Encoder.Encode: multi-channel encoding not implemented")
+		panic("gsp: Encoder.Encode: multi-channel encoding not implemented")
 	}
 
 	bytesWritten, err := buf.WriteTo(e.w)
 	if err != nil {
-		return fmt.Errorf("gosp: Encoder.Encode: writing bytes: %w", err)
+		return fmt.Errorf("gsp: Encoder.Encode: writing bytes: %w", err)
 	}
 
 	e.bytesWritten.Add(int64(bytesWritten))
@@ -192,6 +192,6 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 
 		return len(src)
 	default:
-		panic("gosp: Encoder.convertMono: unknown bit size encountered")
+		panic("gsp: Encoder.convertMono: unknown bit size encountered")
 	}
 }

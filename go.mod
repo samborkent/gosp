@@ -1,3 +1,3 @@
-module github.com/samborkent/gosp
+module github.com/samborkent/gsp
 
 go 1.24.0

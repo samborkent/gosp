@@ -1,4 +1,4 @@
-package gosp
+package gsp
 
 // EncodingOption is a functional option which is used for both [LPCMEncoder] and [LPCMDecoder].
 type EncodingOption func(cfg *EncodingConfig)

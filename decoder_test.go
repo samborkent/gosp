@@ -1,4 +1,4 @@
-package gosp_test
+package gsp_test
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/samborkent/gosp"
+	"github.com/samborkent/gsp"
 )
 
 func TestDecoderDecode(t *testing.T) {
@@ -24,9 +24,9 @@ func TestDecoderDecode(t *testing.T) {
 			input[i] = uint8(rand.UintN(math.MaxUint8))
 		}
 
-		expected := make([]gosp.Mono[uint8], N)
+		expected := make([]gsp.Mono[uint8], N)
 		for i := range N {
-			expected[i] = gosp.ToMono(input[i])
+			expected[i] = gsp.ToMono(input[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -41,10 +41,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, N)
-		expected := make([]gosp.Mono[uint8], N)
+		expected := make([]gsp.Mono[uint8], N)
 		for i := range N {
 			input[i] = byte(data[i])
-			expected[i] = gosp.ToMono(input[i])
+			expected[i] = gsp.ToMono(input[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -59,10 +59,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 2*N)
-		expected := make([]gosp.Mono[uint16], N)
+		expected := make([]gsp.Mono[uint16], N)
 		for i := range N {
 			binary.LittleEndian.PutUint16(input[2*i:2*i+2], data[i])
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -77,10 +77,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 2*N)
-		expected := make([]gosp.Mono[int16], N)
+		expected := make([]gsp.Mono[int16], N)
 		for i := range N {
 			binary.LittleEndian.PutUint16(input[2*i:2*i+2], uint16(data[i]))
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -95,10 +95,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 4*N)
-		expected := make([]gosp.Mono[uint32], N)
+		expected := make([]gsp.Mono[uint32], N)
 		for i := range N {
 			binary.LittleEndian.PutUint32(input[4*i:4*i+4], data[i])
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -113,10 +113,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 4*N)
-		expected := make([]gosp.Mono[int32], N)
+		expected := make([]gsp.Mono[int32], N)
 		for i := range N {
 			binary.LittleEndian.PutUint32(input[4*i:4*i+4], uint32(data[i]))
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -131,10 +131,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 4*N)
-		expected := make([]gosp.Mono[float32], N)
+		expected := make([]gsp.Mono[float32], N)
 		for i := range N {
 			binary.LittleEndian.PutUint32(input[4*i:4*i+4], math.Float32bits(data[i]))
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -149,10 +149,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 8*N)
-		expected := make([]gosp.Mono[uint64], N)
+		expected := make([]gsp.Mono[uint64], N)
 		for i := range N {
 			binary.LittleEndian.PutUint64(input[8*i:8*i+8], data[i])
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -167,10 +167,10 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 8*N)
-		expected := make([]gosp.Mono[int64], N)
+		expected := make([]gsp.Mono[int64], N)
 		for i := range N {
 			binary.LittleEndian.PutUint64(input[8*i:8*i+8], uint64(data[i]))
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
@@ -185,20 +185,20 @@ func TestDecoderDecode(t *testing.T) {
 		}
 
 		input := make([]byte, 8*N)
-		expected := make([]gosp.Mono[float64], N)
+		expected := make([]gsp.Mono[float64], N)
 		for i := range N {
 			binary.LittleEndian.PutUint64(input[8*i:8*i+8], math.Float64bits(data[i]))
-			expected[i] = gosp.ToMono(data[i])
+			expected[i] = gsp.ToMono(data[i])
 		}
 
 		testDecodeMono(t, input, expected)
 	})
 }
 
-func testDecodeMono[T gosp.Type](t *testing.T, input []byte, want []gosp.Mono[T]) {
+func testDecodeMono[T gsp.Type](t *testing.T, input []byte, want []gsp.Mono[T]) {
 	t.Helper()
 
-	decoder := gosp.NewDecoder[gosp.Mono[T], T](bytes.NewReader(input))
+	decoder := gsp.NewDecoder[gsp.Mono[T], T](bytes.NewReader(input))
 
 	if decoder.Channels() != 1 {
 		t.Errorf("wrong number of channels: got '%d', want '%d'", decoder.Channels(), 1)
@@ -210,7 +210,7 @@ func testDecodeMono[T gosp.Type](t *testing.T, input []byte, want []gosp.Mono[T]
 		t.Errorf("wrong byte size: got '%d', want '%d'", decoder.ByteSize(), byteSize)
 	}
 
-	samples := make([]gosp.Mono[T], len(input)/byteSize)
+	samples := make([]gsp.Mono[T], len(input)/byteSize)
 
 	err := decoder.Decode(samples)
 	if err != nil {

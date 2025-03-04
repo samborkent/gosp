@@ -1,4 +1,4 @@
-package gosp
+package gsp
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-var ErrDecoderNotinitialized = errors.New("gosp: Decoder: not initialized")
+var ErrDecoderNotinitialized = errors.New("gsp: Decoder: not initialized")
 
 // Decoder is a linear PCM and floating-point decoder.
 // This decoder can convert binary data into samples.
@@ -66,7 +66,7 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 	// TODO: check if there is a way to only read up to len(s)
 	bytesRead, err := buf.ReadFrom(d.r)
 	if err != nil {
-		return fmt.Errorf("gosp: Decoder.Decode: reading bytes into buffer: %w", err)
+		return fmt.Errorf("gsp: Decoder.Decode: reading bytes into buffer: %w", err)
 	}
 
 	d.bytesRead.Add(int64(bytesRead))
@@ -77,9 +77,9 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 		samplesDecoded := d.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
 		d.samplesDecoded.Add(int64(samplesDecoded))
 	case 2:
-		panic("gosp: Decoder.Decode: implement stereo decoding")
+		panic("gsp: Decoder.Decode: implement stereo decoding")
 	default:
-		panic("gosp: Decoder.Decode: implement multi-channel decoding")
+		panic("gsp: Decoder.Decode: implement multi-channel decoding")
 	}
 
 	// Put buffer back in pool.
@@ -241,6 +241,6 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 
 		return minLen
 	default:
-		panic("gosp: Decoder.convertMono: unknown bit size encountered")
+		panic("gsp: Decoder.convertMono: unknown bit size encountered")
 	}
 }

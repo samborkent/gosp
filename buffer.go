@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package gosp
+package gsp
 
 // Simple sample frame buffer for marshaling data.
 
@@ -44,8 +44,8 @@ const (
 
 // ErrTooLarge is passed to panic if memory cannot be allocated to store data in a buffer.
 var (
-	ErrTooLarge     = errors.New("gosp: Buffer: too large")
-	errNegativeRead = errors.New("gosp: Buffer: reader returned negative count from Read")
+	ErrTooLarge     = errors.New("gsp: Buffer: too large")
+	errNegativeRead = errors.New("gsp: Buffer: reader returned negative count from Read")
 )
 
 const maxInt = int(^uint(0) >> 1)
@@ -87,7 +87,7 @@ func (b *Buffer[F, T]) Truncate(n int) {
 	}
 	b.lastRead = opInvalid
 	if n < 0 || n > b.Len() {
-		panic("gosp: Buffer.Truncate: truncation out of range")
+		panic("gsp: Buffer.Truncate: truncation out of range")
 	}
 	b.buf = b.buf[:b.off+n]
 }
@@ -155,7 +155,7 @@ func (b *Buffer[F, T]) grow(n int) int {
 // If the buffer can't grow it will panic with [ErrTooLarge].
 func (b *Buffer[F, T]) Grow(n int) {
 	if n < 0 {
-		panic("gosp: Buffer.Grow: negative count")
+		panic("gsp: Buffer.Grow: negative count")
 	}
 	m := b.grow(n)
 	b.buf = b.buf[:m]
@@ -238,7 +238,7 @@ func (b *Buffer[F, T]) WriteTo(w Writer[F, T]) (n int64, err error) {
 	if nSamples := b.Len(); nSamples > 0 {
 		m, e := w.Write(b.buf[b.off:])
 		if m > nSamples {
-			panic("gosp: Buffer.WriteTo: invalid Write count")
+			panic("gsp: Buffer.WriteTo: invalid Write count")
 		}
 		b.off += m
 		n = int64(m)
@@ -324,7 +324,7 @@ func (b *Buffer[F, T]) ReadSample() (F, error) {
 	return c, nil
 }
 
-var errUnreadSample = errors.New("gosp: Buffer.UnreadSample: previous operation was not a successful read")
+var errUnreadSample = errors.New("gsp: Buffer.UnreadSample: previous operation was not a successful read")
 
 // UnreadSample unreads the last sample returned by the most recent successful
 // read operation that read at least one sample. If a write has happened since

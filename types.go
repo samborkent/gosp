@@ -1,4 +1,4 @@
-package gosp
+package gsp
 
 // Floating-point type.
 type Float interface {
