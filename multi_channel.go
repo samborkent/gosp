@@ -45,6 +45,19 @@ func (c MultiChannel[T]) DivideMC(x MultiChannel[T]) MultiChannel[T] {
 	return c
 }
 
+// M returns the mid channel.
+func (c MultiChannel[T]) M() T {
+	sum := T(0)
+
+	for _, sample := range c {
+		sum += sample
+	}
+
+	sum /= T(len(c))
+
+	return sum
+}
+
 func (c MultiChannel[T]) Multiply(x T) MultiChannel[T] {
 	for i := range c {
 		c[i] *= x

@@ -77,10 +77,10 @@ func (s Stereo[T]) Swap() Stereo[T] {
 	return Stereo[T]{s[R], s[L]}
 }
 
-func ToStereo[T Type](l, r T) Stereo[T] {
-	return Stereo[T]{l, r}
+func MonoToStereo[T Type](s Mono[T]) Stereo[T] {
+	return Stereo[T]{s.M(), s.M()}
 }
 
-func ZeroStereo[T Type]() Stereo[T] {
-	return Stereo[T]{0, 0}
+func ToStereo[T Type](l, r T) Stereo[T] {
+	return Stereo[T]{l, r}
 }
