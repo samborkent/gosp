@@ -26,7 +26,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, N)
 		for i := range N {
-			want[i] = input[i].S()
+			want[i] = input[i].M()
 		}
 
 		testEncodeMono(t, input, want)
@@ -42,7 +42,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, N)
 		for i := range N {
-			want[i] = uint8(input[i].S())
+			want[i] = uint8(input[i].M())
 		}
 
 		testEncodeMono(t, input, want)
@@ -58,7 +58,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 2*N)
 		for i := range N {
-			binary.LittleEndian.PutUint16(want[2*i:2*(i+1)], input[i].S())
+			binary.LittleEndian.PutUint16(want[2*i:2*(i+1)], input[i].M())
 		}
 
 		testEncodeMono(t, input, want)
@@ -74,7 +74,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 2*N)
 		for i := range N {
-			binary.LittleEndian.PutUint16(want[2*i:2*(i+1)], uint16(input[i].S()))
+			binary.LittleEndian.PutUint16(want[2*i:2*(i+1)], uint16(input[i].M()))
 		}
 
 		testEncodeMono(t, input, want)
@@ -90,7 +90,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 4*N)
 		for i := range N {
-			binary.LittleEndian.PutUint32(want[4*i:4*(i+1)], input[i].S())
+			binary.LittleEndian.PutUint32(want[4*i:4*(i+1)], input[i].M())
 		}
 
 		testEncodeMono(t, input, want)
@@ -106,7 +106,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 4*N)
 		for i := range N {
-			binary.LittleEndian.PutUint32(want[4*i:4*(i+1)], uint32(input[i].S()))
+			binary.LittleEndian.PutUint32(want[4*i:4*(i+1)], uint32(input[i].M()))
 		}
 
 		testEncodeMono(t, input, want)
@@ -122,7 +122,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 4*N)
 		for i := range N {
-			binary.LittleEndian.PutUint32(want[4*i:4*(i+1)], math.Float32bits(input[i].S()))
+			binary.LittleEndian.PutUint32(want[4*i:4*(i+1)], math.Float32bits(input[i].M()))
 		}
 
 		testEncodeMono(t, input, want)
@@ -138,7 +138,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 8*N)
 		for i := range N {
-			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], input[i].S())
+			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], input[i].M())
 		}
 
 		testEncodeMono(t, input, want)
@@ -154,7 +154,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 8*N)
 		for i := range N {
-			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], uint64(input[i].S()))
+			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], uint64(input[i].M()))
 		}
 
 		testEncodeMono(t, input, want)
@@ -170,7 +170,7 @@ func TestEncoderEncode(t *testing.T) {
 
 		want := make([]byte, 8*N)
 		for i := range N {
-			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], math.Float64bits(input[i].S()))
+			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], math.Float64bits(input[i].M()))
 		}
 
 		testEncodeMono(t, input, want)

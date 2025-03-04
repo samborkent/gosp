@@ -96,7 +96,7 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 
 		// int8
 		for i := range len(src) {
-			_ = buf.WriteByte(byte(src[i].S()))
+			_ = buf.WriteByte(byte(src[i].M()))
 		}
 
 		return len(src)
@@ -105,13 +105,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		if e.bigEndian {
 			for i := range len(src) {
 				var data [2]byte
-				binary.BigEndian.PutUint16(data[:], uint16(src[i].S()))
+				binary.BigEndian.PutUint16(data[:], uint16(src[i].M()))
 				_, _ = buf.Write(data[:])
 			}
 		} else {
 			for i := range len(src) {
 				var data [2]byte
-				binary.LittleEndian.PutUint16(data[:], uint16(src[i].S()))
+				binary.LittleEndian.PutUint16(data[:], uint16(src[i].M()))
 				_, _ = buf.Write(data[:])
 			}
 		}
@@ -124,13 +124,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 			if e.bigEndian {
 				for i := range len(src) {
 					var data [4]byte
-					binary.BigEndian.PutUint32(data[:], uint32(src[i].S()))
+					binary.BigEndian.PutUint32(data[:], uint32(src[i].M()))
 					_, _ = buf.Write(data[:])
 				}
 			} else {
 				for i := range len(src) {
 					var data [4]byte
-					binary.LittleEndian.PutUint32(data[:], uint32(src[i].S()))
+					binary.LittleEndian.PutUint32(data[:], uint32(src[i].M()))
 					_, _ = buf.Write(data[:])
 				}
 			}
@@ -142,13 +142,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		if e.bigEndian {
 			for i := range len(src) {
 				var data [4]byte
-				binary.BigEndian.PutUint32(data[:], math.Float32bits(float32(src[i].S())))
+				binary.BigEndian.PutUint32(data[:], math.Float32bits(float32(src[i].M())))
 				_, _ = buf.Write(data[:])
 			}
 		} else {
 			for i := range len(src) {
 				var data [4]byte
-				binary.LittleEndian.PutUint32(data[:], math.Float32bits(float32(src[i].S())))
+				binary.LittleEndian.PutUint32(data[:], math.Float32bits(float32(src[i].M())))
 				_, _ = buf.Write(data[:])
 			}
 		}
@@ -161,13 +161,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 			if e.bigEndian {
 				for i := range len(src) {
 					var data [8]byte
-					binary.BigEndian.PutUint64(data[:], uint64(src[i].S()))
+					binary.BigEndian.PutUint64(data[:], uint64(src[i].M()))
 					_, _ = buf.Write(data[:])
 				}
 			} else {
 				for i := range len(src) {
 					var data [8]byte
-					binary.LittleEndian.PutUint64(data[:], uint64(src[i].S()))
+					binary.LittleEndian.PutUint64(data[:], uint64(src[i].M()))
 					_, _ = buf.Write(data[:])
 				}
 			}
@@ -179,13 +179,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		if e.bigEndian {
 			for i := range len(src) {
 				var data [8]byte
-				binary.BigEndian.PutUint64(data[:], math.Float64bits(float64(src[i].S())))
+				binary.BigEndian.PutUint64(data[:], math.Float64bits(float64(src[i].M())))
 				_, _ = buf.Write(data[:])
 			}
 		} else {
 			for i := range len(src) {
 				var data [8]byte
-				binary.LittleEndian.PutUint64(data[:], math.Float64bits(float64(src[i].S())))
+				binary.LittleEndian.PutUint64(data[:], math.Float64bits(float64(src[i].M())))
 				_, _ = buf.Write(data[:])
 			}
 		}
