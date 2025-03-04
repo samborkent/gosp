@@ -1,41 +1,65 @@
 package gosp
 
-type floats interface {
+// Floating-point type.
+type Float interface {
 	float32 | float64
 }
 
-type ints interface {
+// Signed integer type.
+type Int interface {
 	int8 | int16 | int32 | int64
 }
 
-type SignedType interface {
-	ints | floats
-}
-
-type UnsignedType interface {
+// Unsigned integer type.
+type Uint interface {
 	uint8 | uint16 | uint32 | uint64
 }
 
-type Type interface {
-	SignedType | UnsignedType
+// Fixed-point type.
+type Fixed interface {
+	Int | Uint
 }
 
+// Signed type.
+type Signed interface {
+	Int | Float
+}
+
+// Unsigned type (alias of Uint).
+type Unsigned Uint
+
+// Combination of all types.
+type Type interface {
+	Signed | Unsigned
+}
+
+// Audio channel types.
 type (
-	Mono[T Type]         [1]T
-	Stereo[T Type]       [2]T
+	// Mono channel type.
+	//
+	// 	len(*new(Mono[T])) == 1
+	Mono[T Type] [1]T
+	// Stereo channel type.
+	//
+	// 	len(*new(Stereo[T])) == 2
+	Stereo[T Type] [2]T
+	// Multi-channel type.
+	//
+	// 	len(*new(MultiChannel[T])) == numChannels
 	MultiChannel[T Type] []T
 )
 
-type SampleType[T Type] interface {
+// Frame is mono, stereo, or multi-channel sample.
+type Frame[T Type] interface {
 	Mono[T] | Stereo[T] | MultiChannel[T]
 }
 
 // Implementations must not retain p.
-type Reader[S SampleType[T], T Type] interface {
-	Read(p []S) (n int, err error)
+type Reader[F Frame[T], T Type] interface {
+	Read(p []F) (n int, err error)
 }
 
 // Implementations must not retain p.
-type Writer[S SampleType[T], T Type] interface {
-	Write(p []S) (n int, err error)
+type Writer[F Frame[T], T Type] interface {
+	Write(p []F) (n int, err error)
 }

@@ -6,27 +6,27 @@ import (
 
 // BytesPool is a pool for retrieving variable sized sample buffers.
 // Useful for processing decoded audio streams.
-type BufferPool[S SampleType[T], T Type] struct {
+type BufferPool[F Frame[T], T Type] struct {
 	pool sync.Pool
 }
 
-func NewBufferPool[S SampleType[T], T Type]() *BufferPool[S, T] {
-	return &BufferPool[S, T]{
+func NewBufferPool[F Frame[T], T Type]() *BufferPool[F, T] {
+	return &BufferPool[F, T]{
 		pool: sync.Pool{
 			New: func() any {
-				return new(Buffer[S, T])
+				return new(Buffer[F, T])
 			},
 		},
 	}
 }
 
-func (p *BufferPool[S, T]) Get() *Buffer[S, T] {
+func (p *BufferPool[F, T]) Get() *Buffer[F, T] {
 	ptr := p.pool.Get()
 	if ptr == nil {
 		return nil
 	}
 
-	buf, ok := ptr.(*Buffer[S, T])
+	buf, ok := ptr.(*Buffer[F, T])
 	if !ok {
 		return nil
 	}
@@ -34,7 +34,7 @@ func (p *BufferPool[S, T]) Get() *Buffer[S, T] {
 	return buf
 }
 
-func (p *BufferPool[S, T]) Put(buffer *Buffer[S, T]) {
+func (p *BufferPool[F, T]) Put(buffer *Buffer[F, T]) {
 	buffer.Reset()
 	p.pool.Put(buffer)
 }

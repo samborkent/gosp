@@ -10,31 +10,38 @@ import (
 	"unsafe"
 )
 
-// TODO: support little-endian and big-endian modes.
 // TODO: separate float decoder to separate type.
 
 var ErrLPCMDecoderNotinitialized = errors.New("gosp: LPCMDecoder: not initialized")
 
 // LPCMDecoder is a linear pulse-code modulation decoder.
 // This decoder can convert binary data into samples.
-type LPCMDecoder[S SampleType[T], T Type] struct {
+type LPCMDecoder[F Frame[T], T Type] struct {
 	r                         io.Reader
 	channels, byteSize        int
 	bytesRead, samplesDecoded atomic.Int64
+	bigEndian                 bool
 	initialized               bool
 }
 
-func NewLPCMDecoder[S SampleType[T], T Type](r io.Reader) *LPCMDecoder[S, T] {
-	return &LPCMDecoder[S, T]{
+func NewLPCMDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *LPCMDecoder[F, T] {
+	// Apply encoding options.
+	var cfg EncodingConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	return &LPCMDecoder[F, T]{
 		r:           r,
-		channels:    len(*new(S)),
+		channels:    len(*new(F)),
 		byteSize:    int(unsafe.Sizeof(*new(T))),
+		bigEndian:   cfg.BigEndian,
 		initialized: true,
 	}
 }
 
 // Decode reads from the internal [io.Reader] and decodes into the sample slice.
-func (d *LPCMDecoder[S, T]) Decode(s []S) error {
+func (d *LPCMDecoder[F, T]) Decode(s []F) error {
 	if !d.initialized {
 		return ErrLPCMDecoderNotinitialized
 	}
@@ -63,7 +70,7 @@ func (d *LPCMDecoder[S, T]) Decode(s []S) error {
 }
 
 // convertMono returns the number of samples converted.
-func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
+func (d *LPCMDecoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 	switch d.byteSize {
 	case 1: // 8 bit
 		minLen := min(len(dst), len(src))
@@ -89,7 +96,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 			// uint16
 			buf := unsafe.Slice((*uint16)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
-				buf[i] = binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				if d.bigEndian {
+					buf[i] = binary.BigEndian.Uint16(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				} else {
+					buf[i] = binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				}
 			}
 
 			return minLen
@@ -110,7 +121,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 			// uint32
 			buf := unsafe.Slice((*uint32)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
-				buf[i] = binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				if d.bigEndian {
+					buf[i] = binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				} else {
+					buf[i] = binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				}
 			}
 
 			return minLen
@@ -122,7 +137,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 			// int32
 			buf := unsafe.Slice((*int32)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
-				buf[i] = int32(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				if d.bigEndian {
+					buf[i] = int32(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				} else {
+					buf[i] = int32(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				}
 			}
 
 			return minLen
@@ -131,7 +150,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 		// float32
 		buf := unsafe.Slice((*float32)(unsafe.Pointer(&dst[0])), minLen)
 		for i := range minLen {
-			buf[i] = math.Float32frombits(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			if d.bigEndian {
+				buf[i] = math.Float32frombits(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			} else {
+				buf[i] = math.Float32frombits(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			}
 		}
 
 		return minLen
@@ -143,7 +166,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 			// uint32
 			buf := unsafe.Slice((*uint64)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
-				buf[i] = binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				if d.bigEndian {
+					buf[i] = binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				} else {
+					buf[i] = binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+				}
 			}
 
 			return minLen
@@ -155,7 +182,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 			// int64
 			buf := unsafe.Slice((*int64)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
-				buf[i] = int64(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				if d.bigEndian {
+					buf[i] = int64(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				} else {
+					buf[i] = int64(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				}
 			}
 
 			return minLen
@@ -164,7 +195,11 @@ func (d *LPCMDecoder[S, T]) convertMono(dst []Mono[T], src []byte) int {
 		// float64
 		buf := unsafe.Slice((*float64)(unsafe.Pointer(&dst[0])), minLen)
 		for i := range minLen {
-			buf[i] = math.Float64frombits(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			if d.bigEndian {
+				buf[i] = math.Float64frombits(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			} else {
+				buf[i] = math.Float64frombits(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			}
 		}
 
 		return minLen
