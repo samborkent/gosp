@@ -284,6 +284,7 @@ func convertMultiChannel[O Type, I Type](input MultiChannel[I]) (output MultiCha
 	}
 }
 
+// TODO: add cases for float input
 func convertType[O Type, I Type](in I) (out O) {
 	switch unsafe.Sizeof(in) {
 	case 1:
@@ -386,39 +387,320 @@ func convertType[O Type, I Type](in I) (out O) {
 	case 2:
 		switch unsafe.Sizeof(out) {
 		case 1:
-			panic("gsp: convertType: 16-bit to 8-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint16 -> uint8
+					return O(uint8(uint16(in) >> 8))
+				}
+
+				// uint16 -> int8
+				return O(int8(int16(int32(in)-int32(zeroUint16)) >> 8))
+			}
+
+			if isUnsigned[O]() {
+				// int16 -> uint8
+				return O(uint8(uint16(int32(in)+int32(zeroUint16)) >> 8))
+			}
+
+			// int16 -> int8
+			return O(int8(int16(in) >> 8))
 		case 2:
-			panic("gsp: convertType: 16-bit to 16-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint16 -> uint16
+					return O(in)
+				}
+
+				// uint16 -> int16
+				return O(int16(int32(in) - int32(zeroUint16)))
+			}
+
+			if isUnsigned[O]() {
+				// int16 -> uint16
+				return O(uint16(int32(in) + int32(zeroUint16)))
+			}
+
+			// int16 -> int16
+			return O(in)
 		case 4:
-			panic("gsp: convertType: 16-bit to 32-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint16 -> uint32
+					return O(uint32(in) << 16)
+				}
+
+				if isSigned[O]() {
+					// uint16 -> int32
+					return O(int32(int32(in)-int32(zeroUint16)) << 16)
+				}
+
+				// uint16 -> float32
+				return O(float32(int32(in)-int32(zeroUint16)) / (-math.MinInt16))
+			}
+
+			if isUnsigned[O]() {
+				// int16 -> uint32
+				return O(uint32(int32(in)+int32(zeroUint16)) << 16)
+			}
+
+			if isSigned[O]() {
+				// int16 -> int32
+				return O(int32(in) << 16)
+			}
+
+			// int16 -> float32
+			return O(float32(in) / (-math.MinInt16))
 		case 8:
-			panic("gsp: convertType: 16-bit to 64-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint16 -> uint64
+					return O(uint64(in) << 48)
+				}
+
+				if isSigned[O]() {
+					// uint16 -> int64
+					return O(int64(int32(in)-int32(zeroUint16)) << 48)
+				}
+
+				// uint16 -> float64
+				return O(float64(int32(in)-int32(zeroUint16)) / (-math.MinInt16))
+			}
+
+			if isUnsigned[O]() {
+				// int16 -> uint64
+				return O(uint64(int32(in)+int32(zeroUint16)) << 48)
+			}
+
+			if isSigned[O]() {
+				// int16 -> int64
+				return O(int64(in) << 48)
+			}
+
+			// int16 -> float64
+			return O(float64(in) / (-math.MinInt16))
 		default:
 			panic("gsp: convertType: unknown output bit size encountered")
 		}
 	case 4:
 		switch unsafe.Sizeof(out) {
 		case 1:
-			panic("gsp: convertType: 32-bit to 8-bit conversion not implemented")
+			switch {
+			case isUnsigned[I]():
+				if isUnsigned[O]() {
+					// uint32 -> uint8
+					return O(uint8(uint32(in) >> 24))
+				}
+
+				// uint32 -> int8
+				return O(int8(int32(int64(in)-int64(zeroUint32)) >> 24))
+			case isSigned[I]():
+				if isUnsigned[O]() {
+					// int32 -> uint8
+					return O(uint8(uint32(int64(in)+int64(zeroUint32)) >> 24))
+				}
+
+				// int32 -> int8
+				return O(int8(int32(in) >> 24))
+			default:
+				if isUnsigned[O]() {
+					// float32 -> uint8
+					return O(uint8(int16(float32(in)*(-math.MinInt8)) + int16(zeroUint8)))
+				}
+
+				// float32 -> int8
+				return O(int8(float32(in) * (-math.MinInt8)))
+			}
 		case 2:
-			panic("gsp: convertType: 32-bit to 16-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint32 -> uint16
+					return O(uint16(uint32(in) >> 16))
+				}
+
+				// uint32 -> int16
+				return O(int16(int32(int64(in)-int64(zeroUint32)) >> 16))
+			}
+
+			if isSigned[I]() {
+				if isUnsigned[O]() {
+					// int32 -> uint16
+					return O(uint16(uint32(int64(in)+int64(zeroUint32)) >> 16))
+				}
+
+				// int32 -> int16
+				return O(int16(int32(in) >> 16))
+			}
+
+			if isUnsigned[O]() {
+				// float32 -> uint16
+				return O(uint8(int16(float32(in)*(-math.MinInt8)) + int16(zeroUint8)))
+			}
+
+			// float32 -> int16
+			return O(int16(float32(in) * (-math.MinInt16)))
 		case 4:
-			panic("gsp: convertType: 32-bit to 32-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint32 -> uint32
+					return O(in)
+				}
+
+				if isSigned[O]() {
+					// uint32 -> int32
+					return O(int32(int64(in) - int64(zeroUint32)))
+				}
+
+				// uint32 -> float32
+				return O(float32(float64(int64(in)-int64(zeroUint32)) / (-math.MinInt32)))
+			}
+
+			if isUnsigned[O]() {
+				// int32 -> uint32
+				return O(uint32(int64(in) + int64(zeroUint32)))
+			}
+
+			if isSigned[O]() {
+				// int32 -> int32
+				return O(in)
+			}
+
+			// int32 -> float32
+			return O(float32(float64(in) / (-math.MinInt32)))
 		case 8:
-			panic("gsp: convertType: 32-bit to 64-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint32 -> uint64
+					return O(uint64(in) << 32)
+				}
+
+				if isSigned[O]() {
+					// uint32 -> int64
+					return O((int64(in) - int64(zeroUint32)) << 32)
+				}
+
+				// uint32 -> float64
+				return O(float64(int64(in)-int64(zeroUint32)) / (-math.MinInt32))
+			}
+
+			if isUnsigned[O]() {
+				// int32 -> uint64
+				return O(uint64(int64(in)+int64(zeroUint32)) << 32)
+			}
+
+			if isSigned[O]() {
+				// int32 -> int64
+				return O(int64(in) << 32)
+			}
+
+			// int32 -> float64
+			return O(float64(in) / (-math.MinInt32))
 		default:
 			panic("gsp: convertType: unknown output bit size encountered")
 		}
 	case 8:
 		switch unsafe.Sizeof(out) {
 		case 1:
-			panic("gsp: convertType: 64-bit to 8-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint64 -> uint8
+					return O(uint8(uint64(in) >> 56))
+				}
+
+				// uint64 -> int8
+				return O(int8(int64(float64(in)-float64(zeroUint64)) >> 56))
+			}
+
+			if isUnsigned[O]() {
+				// int64 -> uint8
+				return O(uint8(uint64(float64(in)+float64(zeroUint64)) >> 56))
+			}
+
+			if isSigned[I]() {
+				// int64 -> int8
+				return O(int8(int64(in) >> 56))
+			}
+
+			// float64 -> int8
+			return O(int8(float64(in) * (-math.MinInt8)))
 		case 2:
-			panic("gsp: convertType: 64-bit to 16-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint64 -> uint16
+					return O(uint16(uint64(in) >> 48))
+				}
+
+				// uint64 -> int16
+				return O(int16(int64(float64(in)-float64(zeroUint64)) >> 48))
+			}
+
+			if isUnsigned[O]() {
+				// int64 -> uint16
+				return O(uint16(uint64(float64(in)+float64(zeroUint64)) >> 48))
+			}
+
+			if isSigned[I]() {
+				// int64 -> int16
+				return O(int16(int64(in) >> 48))
+			}
+
+			// float64 -> int16
+			return O(int16(float64(in) * (-math.MinInt16)))
 		case 4:
-			panic("gsp: convertType: 64-bit to 32-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint64 -> uint32
+					return O(uint32(uint64(in) >> 32))
+				}
+
+				if isSigned[O]() {
+					// uint64 -> int32
+					return O(int32(int64(float64(in)-float64(zeroUint64)) >> 32))
+				}
+
+				// uint64 -> float32
+				return O(float32((float64(in) - float64(zeroUint64)) / (-math.MinInt64)))
+			}
+
+			if isUnsigned[O]() {
+				// int64 -> uint32
+				return O(uint32(uint64(float64(in)+float64(zeroUint64)) >> 32))
+			}
+
+			if isSigned[O]() {
+				// int64 -> int32
+				return O(int32(int64(in) >> 32))
+			}
+
+			// int64 -> float32
+			return O(float32(float64(in) / (-math.MinInt64)))
 		case 8:
-			panic("gsp: convertType: 64-bit to 64-bit conversion not implemented")
+			if isUnsigned[I]() {
+				if isUnsigned[O]() {
+					// uint64 -> uint64
+					return O(in)
+				}
+
+				if isSigned[O]() {
+					// uint64 -> int64
+					return O(int64(float64(in) - float64(zeroUint64)))
+				}
+
+				// uint64 -> float64
+				return O((float64(in) - float64(zeroUint64)) / (-math.MinInt64))
+			}
+
+			if isUnsigned[O]() {
+				// int64 -> uint64
+				return O(uint64(float64(in) + float64(zeroUint64)))
+			}
+
+			if isSigned[O]() {
+				// int64 -> int64
+				return O(in)
+			}
+
+			// int64 -> float64
+			return O(float64(in) / (-math.MinInt64))
 		default:
 			panic("gsp: convertType: unknown output bit size encountered")
 		}
