@@ -106,10 +106,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		if T(0)-1 > 0 {
 			// uint16
 			buf := unsafe.Slice((*uint16)(unsafe.Pointer(&dst[0])), minLen)
-			for i := range minLen {
-				if d.bigEndian {
+			if d.bigEndian {
+				for i := range minLen {
 					buf[i] = binary.BigEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)])
-				} else {
+				}
+			} else {
+				for i := range minLen {
 					buf[i] = binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)])
 				}
 			}
@@ -119,10 +121,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 
 		// int16
 		buf := unsafe.Slice((*int16)(unsafe.Pointer(&dst[0])), minLen)
-		for i := range minLen {
-			if d.bigEndian {
+		if d.bigEndian {
+			for i := range minLen {
 				buf[i] = int16(binary.BigEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)]))
-			} else {
+			}
+		} else {
+			for i := range minLen {
 				buf[i] = int16(binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)]))
 			}
 		}
@@ -135,10 +139,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		if T(0)-1 > 0 {
 			// uint32
 			buf := unsafe.Slice((*uint32)(unsafe.Pointer(&dst[0])), minLen)
-			for i := range minLen {
-				if d.bigEndian {
+			if d.bigEndian {
+				for i := range minLen {
 					buf[i] = binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)])
-				} else {
+				}
+			} else {
+				for i := range minLen {
 					buf[i] = binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)])
 				}
 			}
@@ -150,10 +156,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		if T(maxInt32)+1 < 0 {
 			// int32
 			buf := unsafe.Slice((*int32)(unsafe.Pointer(&dst[0])), minLen)
-			for i := range minLen {
-				if d.bigEndian {
+			if d.bigEndian {
+				for i := range minLen {
 					buf[i] = int32(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
-				} else {
+				}
+			} else {
+				for i := range minLen {
 					buf[i] = int32(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
 				}
 			}
@@ -163,10 +171,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 
 		// float32
 		buf := unsafe.Slice((*float32)(unsafe.Pointer(&dst[0])), minLen)
-		for i := range minLen {
-			if d.bigEndian {
+		if d.bigEndian {
+			for i := range minLen {
 				buf[i] = math.Float32frombits(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
-			} else {
+			}
+		} else {
+			for i := range minLen {
 				buf[i] = math.Float32frombits(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
 			}
 		}
@@ -179,10 +189,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		if T(0)-1 > 0 {
 			// uint32
 			buf := unsafe.Slice((*uint64)(unsafe.Pointer(&dst[0])), minLen)
-			for i := range minLen {
-				if d.bigEndian {
+			if d.bigEndian {
+				for i := range minLen {
 					buf[i] = binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)])
-				} else {
+				}
+			} else {
+				for i := range minLen {
 					buf[i] = binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)])
 				}
 			}
@@ -194,10 +206,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		if T(maxInt64)+1 < 0 {
 			// int64
 			buf := unsafe.Slice((*int64)(unsafe.Pointer(&dst[0])), minLen)
-			for i := range minLen {
-				if d.bigEndian {
+			if d.bigEndian {
+				for i := range minLen {
 					buf[i] = int64(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
-				} else {
+				}
+			} else {
+				for i := range minLen {
 					buf[i] = int64(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
 				}
 			}
@@ -207,10 +221,12 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 
 		// float64
 		buf := unsafe.Slice((*float64)(unsafe.Pointer(&dst[0])), minLen)
-		for i := range minLen {
-			if d.bigEndian {
+		if d.bigEndian {
+			for i := range minLen {
 				buf[i] = math.Float64frombits(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
-			} else {
+			}
+		} else {
+			for i := range minLen {
 				buf[i] = math.Float64frombits(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
 			}
 		}

@@ -1,11 +1,12 @@
 package gosp
 
 import (
-	"bufio"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sync/atomic"
 	"unsafe"
 )
@@ -46,14 +47,16 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 		return ErrDecoderNotinitialized
 	}
 
+	buf := e.pool.Get()
+	if buf == nil {
+		// Allocate in-case the pool does not have a pre-allocated entry ready.
+		buf = bytes.NewBuffer(make([]byte, len(s)*e.channels*e.byteSize))
+	}
+
 	switch e.channels {
 	case 1:
 		// There is only a single channel, so we can safely perform this unsafe type-casting.
-		samplesEncoded, err := e.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)))
-		if err != nil {
-			return fmt.Errorf("gosp: Encoder.Encode: encoding sample frames: %w", err)
-		}
-
+		samplesEncoded := e.convertMono(buf, unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)))
 		e.samplesEncoded.Add(int64(samplesEncoded))
 	case 2:
 		panic("gosp: Encoder.Encode: stereo encoding not implemented")
@@ -61,106 +64,125 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 		panic("gosp: Encoder.Encode: multi-channel encoding not implemented")
 	}
 
+	bytesWritten, err := buf.WriteTo(e.w)
+	if err != nil {
+		return fmt.Errorf("gosp: Encoder.Encode: writing bytes: %w", err)
+	}
+
+	e.bytesWritten.Add(int64(bytesWritten))
+	e.pool.Put(buf)
+
 	return nil
 }
 
 // convertMono writes the encoded sampled to the internal [io.Writer].
-func (e *Encoder[F, T]) convertMono(src []Mono[T]) (int64, error) {
-	buf := e.pool.Get()
-	if buf == nil {
-		// Allocate in-case the pool does not have a pre-allocated entry ready.
-		buf = bytes.NewBuffer(make([]byte, len(src)*e.channels*e.byteSize))
-	}
-
-	bufio.NewWriterSize(e.w, len(src)*e.channels*e.byteSize)
-
+func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 	switch e.byteSize {
 	case 1: // 8 bit
-		minLen := len(src)
-
 		// Abuse overflow rules to deduce specific type.
 		if T(0)-1 > 0 {
 			// uint8
-			n, err := e.w.Write(unsafe.Slice((*uint8)(unsafe.Pointer(&src[0])), minLen))
-			e.pool.Put(buf)
-			return int64(n), err
+			n, _ := buf.Write(unsafe.Slice((*uint8)(unsafe.Pointer(&src[0])), len(src)))
+			return n
 		}
 
 		// int8
-		for i := range minLen {
+		for i := range len(src) {
 			_ = buf.WriteByte(byte(src[i][0]))
 		}
 
-		n, err := buf.WriteTo(e.w)
-		e.pool.Put(buf)
-		return n, err
-	// case 2: // 16 bit
-	// 	minLen := min(len(dst), len(src)/d.byteSize)
+		return len(src)
+	case 2: // 16 bit
+		// uint16 & int16
+		if e.bigEndian {
+			for i := range len(src) {
+				var data [2]byte
+				binary.BigEndian.PutUint16(data[:], uint16(src[i][0]))
+				_, _ = buf.Write(data[:])
+			}
+		} else {
+			for i := range len(src) {
+				var data [2]byte
+				binary.LittleEndian.PutUint16(data[:], uint16(src[i][0]))
+				_, _ = buf.Write(data[:])
+			}
+		}
 
-	// 	// uint16 & int16
-	// 	for i := range minLen {
-	// 		if d.bigEndian {
-	// 			binary.BigEndian.PutUint16(dst[d.byteSize*i:d.byteSize*(i+1)], uint16(src[i][0]))
-	// 		} else {
-	// 			binary.LittleEndian.PutUint16(dst[d.byteSize*i:d.byteSize*(i+1)], uint16(src[i][0]))
-	// 		}
-	// 	}
+		return len(src)
+	case 4: // 32 bit
+		// Abuse overflow rules to deduce specific type.
+		if T(0)-1 > 0 || T(maxInt32)+1 < 0 {
+			// uint32 & int32
+			if e.bigEndian {
+				for i := range len(src) {
+					var data [4]byte
+					binary.BigEndian.PutUint32(data[:], uint32(src[i][0]))
+					_, _ = buf.Write(data[:])
+				}
+			} else {
+				for i := range len(src) {
+					var data [4]byte
+					binary.LittleEndian.PutUint32(data[:], uint32(src[i][0]))
+					_, _ = buf.Write(data[:])
+				}
+			}
 
-	// 	return minLen
-	// case 4: // 32 bit
-	// 	minLen := min(len(dst), len(src)/d.byteSize)
+			return len(src)
+		}
 
-	// 	// Abuse overflow rules to deduce specific type.
-	// 	if T(0)-1 > 0 || T(maxInt32)+1 < 0 {
-	// 		// uint32 & int32
-	// 		for i := range minLen {
-	// 			if d.bigEndian {
-	// 				binary.BigEndian.PutUint32(dst[d.byteSize*i:d.byteSize*(i+1)], uint32(src[i][0]))
-	// 			} else {
-	// 				binary.LittleEndian.PutUint32(dst[d.byteSize*i:d.byteSize*(i+1)], uint32(src[i][0]))
-	// 			}
-	// 		}
+		// float32
+		if e.bigEndian {
+			for i := range len(src) {
+				var data [4]byte
+				binary.BigEndian.PutUint32(data[:], math.Float32bits(float32(src[i][0])))
+				_, _ = buf.Write(data[:])
+			}
+		} else {
+			for i := range len(src) {
+				var data [4]byte
+				binary.LittleEndian.PutUint32(data[:], math.Float32bits(float32(src[i][0])))
+				_, _ = buf.Write(data[:])
+			}
+		}
 
-	// 		return minLen
-	// 	}
+		return len(src)
+	case 8: // 64 bit
+		// Abuse overflow rules to deduce specific type.
+		if T(0)-1 > 0 || T(maxInt64)+1 < 0 {
+			// uint64 & int64
+			if e.bigEndian {
+				for i := range len(src) {
+					var data [8]byte
+					binary.BigEndian.PutUint64(data[:], uint64(src[i][0]))
+					_, _ = buf.Write(data[:])
+				}
+			} else {
+				for i := range len(src) {
+					var data [8]byte
+					binary.LittleEndian.PutUint64(data[:], uint64(src[i][0]))
+					_, _ = buf.Write(data[:])
+				}
+			}
 
-	// 	// float32
-	// 	for i := range minLen {
-	// 		if d.bigEndian {
-	// 			binary.BigEndian.PutUint32(dst[d.byteSize*i:d.byteSize*(i+1)], math.Float32bits(float32(src[i][0])))
-	// 		} else {
-	// 			binary.LittleEndian.PutUint32(dst[d.byteSize*i:d.byteSize*(i+1)], math.Float32bits(float32(src[i][0])))
-	// 		}
-	// 	}
+			return len(src)
+		}
 
-	// 	return minLen
-	// case 8: // 64 bit
-	// 	minLen := min(len(dst), len(src)/d.byteSize)
+		// float64
+		if e.bigEndian {
+			for i := range len(src) {
+				var data [8]byte
+				binary.BigEndian.PutUint64(data[:], math.Float64bits(float64(src[i][0])))
+				_, _ = buf.Write(data[:])
+			}
+		} else {
+			for i := range len(src) {
+				var data [8]byte
+				binary.LittleEndian.PutUint64(data[:], math.Float64bits(float64(src[i][0])))
+				_, _ = buf.Write(data[:])
+			}
+		}
 
-	// 	// Abuse overflow rules to deduce specific type.
-	// 	if T(0)-1 > 0 || T(maxInt64)+1 < 0 {
-	// 		// uint64 & int64
-	// 		for i := range minLen {
-	// 			if d.bigEndian {
-	// 				binary.BigEndian.PutUint64(dst[d.byteSize*i:d.byteSize*(i+1)], uint64(src[i][0]))
-	// 			} else {
-	// 				binary.LittleEndian.PutUint64(dst[d.byteSize*i:d.byteSize*(i+1)], uint64(src[i][0]))
-	// 			}
-	// 		}
-
-	// 		return minLen
-	// 	}
-
-	// 	// float64
-	// 	for i := range minLen {
-	// 		if d.bigEndian {
-	// 			binary.BigEndian.PutUint64(dst[d.byteSize*i:d.byteSize*(i+1)], math.Float64bits(float64(src[i][0])))
-	// 		} else {
-	// 			binary.LittleEndian.PutUint64(dst[d.byteSize*i:d.byteSize*(i+1)], math.Float64bits(float64(src[i][0])))
-	// 		}
-	// 	}
-
-	// 	return minLen
+		return len(src)
 	default:
 		panic("gosp: Encoder.convertMono: unknown bit size encountered")
 	}
