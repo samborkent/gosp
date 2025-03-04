@@ -19,3 +19,13 @@ type (
 type SampleType[T Type] interface {
 	Mono | Stereo[T] | MultiChannel[T]
 }
+
+// Implementations must not retain p.
+type Reader[S SampleType[T], T Type] interface {
+	Read(p []S) (n int, err error)
+}
+
+// Implementations must not retain p.
+type Writer[S SampleType[T], T Type] interface {
+	Write(p []S) (n int, err error)
+}
