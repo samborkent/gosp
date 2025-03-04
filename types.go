@@ -33,11 +33,6 @@ type Type interface {
 	Signed | Unsigned
 }
 
-// Multi-channel type.
-//
-//	len(*new(MultiChannel[T])) == numChannels
-type MultiChannel[T Type] []T
-
 // Frame is mono, stereo, or multi-channel sample.
 type Frame[T Type] interface {
 	Mono[T] | Stereo[T] | MultiChannel[T]
