@@ -35,10 +35,18 @@ func NewDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *Decode
 		r:           r,
 		pool:        NewByteBufferPool(),
 		channels:    len(*new(F)),
-		byteSize:    int(unsafe.Sizeof(*new(T))),
+		byteSize:    int(unsafe.Sizeof(T(0))),
 		bigEndian:   cfg.BigEndian,
 		initialized: true,
 	}
+}
+
+func (d *Decoder[F, T]) Channels() int {
+	return d.channels
+}
+
+func (d *Decoder[F, T]) ByteSize() int {
+	return d.byteSize
 }
 
 // Decode reads from the internal [io.Reader] and decodes into the sample slice.
@@ -65,7 +73,7 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 
 	switch d.channels {
 	case 1:
-		// There is only a single channel, so we can safely perform this unsafe type -casting.
+		// There is only a single channel, so we can safely perform this unsafe type-casting.
 		samplesDecoded := d.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
 		d.samplesDecoded.Add(int64(samplesDecoded))
 	case 2:

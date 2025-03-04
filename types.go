@@ -33,12 +33,7 @@ type Type interface {
 	Signed | Unsigned
 }
 
-// Audio channel types.
 type (
-	// Mono channel type.
-	//
-	// 	len(*new(Mono[T])) == 1
-	Mono[T Type] [1]T
 	// Stereo channel type.
 	//
 	// 	len(*new(Stereo[T])) == 2
