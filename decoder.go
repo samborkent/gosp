@@ -1,6 +1,7 @@
 package gosp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -17,8 +18,8 @@ var ErrDecoderNotinitialized = errors.New("gosp: Decoder: not initialized")
 type Decoder[F Frame[T], T Type] struct {
 	r                         io.Reader
 	pool                      *ByteBufferPool
-	channels, byteSize        int
 	bytesRead, samplesDecoded atomic.Int64
+	channels, byteSize        int
 	bigEndian                 bool
 	initialized               bool
 }
@@ -47,31 +48,25 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 		return ErrDecoderNotinitialized
 	}
 
-	var buf []byte
-
 	// Retrieve byte buffer from pool.
-	ptr := d.pool.Get()
-	if ptr == nil {
-		// Allocate in-case the pool somehow returns a nil-pointer.
-		buf = make([]byte, len(s)*d.channels*d.byteSize)
-	} else {
-		buffer := *ptr
-
-		// TODO: check if there is a way to only read up to len(s)
-		bytesRead, err := buffer.ReadFrom(d.r)
-		if err != nil {
-			return fmt.Errorf("gosp: Decoder.Decode: reading bytes into buffer: %w", err)
-		}
-
-		d.bytesRead.Add(int64(bytesRead))
-
-		buf = buffer.Bytes()
+	buf := d.pool.Get()
+	if buf == nil {
+		// Allocate in-case the pool does not have a pre-allocated entry ready.
+		buf = bytes.NewBuffer(make([]byte, len(s)*d.channels*d.byteSize))
 	}
+
+	// TODO: check if there is a way to only read up to len(s)
+	bytesRead, err := buf.ReadFrom(d.r)
+	if err != nil {
+		return fmt.Errorf("gosp: Decoder.Decode: reading bytes into buffer: %w", err)
+	}
+
+	d.bytesRead.Add(int64(bytesRead))
 
 	switch d.channels {
 	case 1:
-		// We only have a single channel, so we can safely perform this unsafe type casting.
-		samplesDecoded := d.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)), buf)
+		// There is only a single channel, so we can safely perform this unsafe type -casting.
+		samplesDecoded := d.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
 		d.samplesDecoded.Add(int64(samplesDecoded))
 	case 2:
 		panic("gosp: Decoder.Decode: implement stereo decoding")
@@ -80,9 +75,7 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 	}
 
 	// Put buffer back in pool.
-	if ptr != nil {
-		d.pool.Put(ptr)
-	}
+	d.pool.Put(buf)
 
 	return nil
 }
@@ -115,9 +108,9 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 			buf := unsafe.Slice((*uint16)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
 				if d.bigEndian {
-					buf[i] = binary.BigEndian.Uint16(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+					buf[i] = binary.BigEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)])
 				} else {
-					buf[i] = binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+					buf[i] = binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)])
 				}
 			}
 
@@ -127,7 +120,11 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		// int16
 		buf := unsafe.Slice((*int16)(unsafe.Pointer(&dst[0])), minLen)
 		for i := range minLen {
-			buf[i] = int16(binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+			if d.bigEndian {
+				buf[i] = int16(binary.BigEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)]))
+			} else {
+				buf[i] = int16(binary.LittleEndian.Uint16(src[d.byteSize*i : d.byteSize*(i+1)]))
+			}
 		}
 
 		return minLen
@@ -140,9 +137,9 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 			buf := unsafe.Slice((*uint32)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
 				if d.bigEndian {
-					buf[i] = binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+					buf[i] = binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)])
 				} else {
-					buf[i] = binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+					buf[i] = binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)])
 				}
 			}
 
@@ -150,15 +147,14 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		}
 
 		// Abuse underflow rules to deduce specific type.
-		maxInt32 := math.MaxInt32
 		if T(maxInt32)+1 < 0 {
 			// int32
 			buf := unsafe.Slice((*int32)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
 				if d.bigEndian {
-					buf[i] = int32(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+					buf[i] = int32(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
 				} else {
-					buf[i] = int32(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+					buf[i] = int32(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
 				}
 			}
 
@@ -169,9 +165,9 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		buf := unsafe.Slice((*float32)(unsafe.Pointer(&dst[0])), minLen)
 		for i := range minLen {
 			if d.bigEndian {
-				buf[i] = math.Float32frombits(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				buf[i] = math.Float32frombits(binary.BigEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
 			} else {
-				buf[i] = math.Float32frombits(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				buf[i] = math.Float32frombits(binary.LittleEndian.Uint32(src[d.byteSize*i : d.byteSize*(i+1)]))
 			}
 		}
 
@@ -185,9 +181,9 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 			buf := unsafe.Slice((*uint64)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
 				if d.bigEndian {
-					buf[i] = binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+					buf[i] = binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)])
 				} else {
-					buf[i] = binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize])
+					buf[i] = binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)])
 				}
 			}
 
@@ -195,15 +191,14 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		}
 
 		// Abuse underflow rules to deduce specific type.
-		maxInt32 := math.MaxInt64
-		if T(maxInt32)+1 < 0 {
+		if T(maxInt64)+1 < 0 {
 			// int64
 			buf := unsafe.Slice((*int64)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
 				if d.bigEndian {
-					buf[i] = int64(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+					buf[i] = int64(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
 				} else {
-					buf[i] = int64(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+					buf[i] = int64(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
 				}
 			}
 
@@ -214,14 +209,14 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		buf := unsafe.Slice((*float64)(unsafe.Pointer(&dst[0])), minLen)
 		for i := range minLen {
 			if d.bigEndian {
-				buf[i] = math.Float64frombits(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				buf[i] = math.Float64frombits(binary.BigEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
 			} else {
-				buf[i] = math.Float64frombits(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*i+d.byteSize]))
+				buf[i] = math.Float64frombits(binary.LittleEndian.Uint64(src[d.byteSize*i : d.byteSize*(i+1)]))
 			}
 		}
 
 		return minLen
 	default:
-		panic("gosp: LPCMDecoder.convertMono: unknown bit size encountered")
+		panic("gosp: Decoder.convertMono: unknown bit size encountered")
 	}
 }

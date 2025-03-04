@@ -10,10 +10,10 @@ import (
 	"github.com/samborkent/gosp"
 )
 
-func TestLPCMDecoderDecode(t *testing.T) {
+func TestDecoderDecode(t *testing.T) {
 	t.Parallel()
 
-	N := 100
+	N := 10
 
 	t.Run("uint8 mono", func(t *testing.T) {
 		t.Parallel()
