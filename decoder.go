@@ -16,6 +16,7 @@ var ErrDecoderNotinitialized = errors.New("gosp: Decoder: not initialized")
 // This decoder can convert binary data into samples.
 type Decoder[F Frame[T], T Type] struct {
 	r                         io.Reader
+	pool                      *ByteBufferPool
 	channels, byteSize        int
 	bytesRead, samplesDecoded atomic.Int64
 	bigEndian                 bool
@@ -31,6 +32,7 @@ func NewDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *Decode
 
 	return &Decoder[F, T]{
 		r:           r,
+		pool:        NewByteBufferPool(),
 		channels:    len(*new(F)),
 		byteSize:    int(unsafe.Sizeof(*new(T))),
 		bigEndian:   cfg.BigEndian,
@@ -39,19 +41,32 @@ func NewDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *Decode
 }
 
 // Decode reads from the internal [io.Reader] and decodes into the sample slice.
+// It will read until [io.EOF] is reached, so users should ensure to pass an adequately sized sample frame slice to prevent data loss.
 func (d *Decoder[F, T]) Decode(s []F) error {
 	if !d.initialized {
 		return ErrDecoderNotinitialized
 	}
 
-	buf := make([]byte, len(s)*d.channels*d.byteSize)
+	var buf []byte
 
-	bytesRead, err := d.r.Read(buf)
-	if err != nil {
-		return fmt.Errorf("gosp: Decoder.Decode: reading bytes into buffer: %w", err)
+	// Retrieve byte buffer from pool.
+	ptr := d.pool.Get()
+	if ptr == nil {
+		// Allocate in-case the pool somehow returns a nil-pointer.
+		buf = make([]byte, len(s)*d.channels*d.byteSize)
+	} else {
+		buffer := *ptr
+
+		// TODO: check if there is a way to only read up to len(s)
+		bytesRead, err := buffer.ReadFrom(d.r)
+		if err != nil {
+			return fmt.Errorf("gosp: Decoder.Decode: reading bytes into buffer: %w", err)
+		}
+
+		d.bytesRead.Add(int64(bytesRead))
+
+		buf = buffer.Bytes()
 	}
-
-	d.bytesRead.Add(int64(bytesRead))
 
 	switch d.channels {
 	case 1:
@@ -64,6 +79,11 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 		panic("gosp: Decoder.Decode: implement multi-channel decoding")
 	}
 
+	// Put buffer back in pool.
+	if ptr != nil {
+		d.pool.Put(ptr)
+	}
+
 	return nil
 }
 
@@ -74,7 +94,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		minLen := min(len(dst), len(src))
 
 		// Abuse overflow rules to deduce specific type.
-		if *new(T)-1 > 0 {
+		if T(0)-1 > 0 {
 			// uint8
 			return copy(unsafe.Slice((*uint8)(unsafe.Pointer(&dst[0])), minLen), src)
 		}
@@ -90,7 +110,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		minLen := min(len(dst), len(src)/d.byteSize)
 
 		// Abuse overflow rules to deduce specific type.
-		if *new(T)-1 > 0 {
+		if T(0)-1 > 0 {
 			// uint16
 			buf := unsafe.Slice((*uint16)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
@@ -115,7 +135,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		minLen := min(len(dst), len(src)/d.byteSize)
 
 		// Abuse overflow rules to deduce specific type.
-		if *new(T)-1 > 0 {
+		if T(0)-1 > 0 {
 			// uint32
 			buf := unsafe.Slice((*uint32)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {
@@ -160,7 +180,7 @@ func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
 		minLen := min(len(dst), len(src)/d.byteSize)
 
 		// Abuse overflow rules to deduce specific type.
-		if *new(T)-1 > 0 {
+		if T(0)-1 > 0 {
 			// uint32
 			buf := unsafe.Slice((*uint64)(unsafe.Pointer(&dst[0])), minLen)
 			for i := range minLen {

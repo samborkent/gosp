@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-// BytesPool is a pool for retrieving variable sized byte buffers.
+// ByteBufferPool is a pool for retrieving variable sized byte buffers.
 // Useful for processing encoded audio streams.
-type BytesPool struct {
+type ByteBufferPool struct {
 	pool sync.Pool
 }
 
-func NewBytesPool() *BytesPool {
-	return &BytesPool{
+func NewByteBufferPool() *ByteBufferPool {
+	return &ByteBufferPool{
 		pool: sync.Pool{
 			New: func() any {
 				return new(bytes.Buffer)
@@ -21,7 +21,7 @@ func NewBytesPool() *BytesPool {
 	}
 }
 
-func (p *BytesPool) Get() *bytes.Buffer {
+func (p *ByteBufferPool) Get() *bytes.Buffer {
 	ptr := p.pool.Get()
 	if ptr == nil {
 		return nil
@@ -35,7 +35,7 @@ func (p *BytesPool) Get() *bytes.Buffer {
 	return buf
 }
 
-func (p *BytesPool) Put(buffer *bytes.Buffer) {
+func (p *ByteBufferPool) Put(buffer *bytes.Buffer) {
 	buffer.Reset()
 	p.pool.Put(buffer)
 }

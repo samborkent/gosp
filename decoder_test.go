@@ -5,10 +5,8 @@ import (
 	"encoding/binary"
 	"math"
 	"math/rand/v2"
-	"strconv"
 	"testing"
 
-	"github.com/samborkent/check"
 	"github.com/samborkent/gosp"
 )
 
@@ -196,7 +194,6 @@ func TestLPCMDecoderDecode(t *testing.T) {
 	})
 }
 
-// Helper function to test mono decoding for a specific type
 func testDecodeMono[T gosp.Type](t *testing.T, input []byte, want []gosp.Mono[T]) {
 	t.Helper()
 
@@ -205,9 +202,13 @@ func testDecodeMono[T gosp.Type](t *testing.T, input []byte, want []gosp.Mono[T]
 	samples := make([]gosp.Mono[T], len(want))
 
 	err := decoder.Decode(samples)
-	check.ErrorNil(t, err, "decoding samples")
+	if err != nil {
+		t.Errorf("decoding samples: error: %s", err.Error())
+	}
 
 	for i := range samples {
-		check.Equal(t, samples[i], want[i], "sample mismatch at index", strconv.Itoa(i))
+		if samples[i] != want[i] {
+			t.Errorf("sample mismatch at index '%d': got '%v', want '%v'", i, samples[i], want[i])
+		}
 	}
 }

@@ -4,8 +4,8 @@ import (
 	"sync"
 )
 
-// SamplePool is a pool for retrieving fixed size sample buffers.
-// Useful for audio processing where the buffer size if fixed.
+// SamplePool is a pool for retrieving fixed size sample frame buffers.
+// Useful for audio processing where the buffer size is fixed.
 type SamplePool[F Frame[T], T Type] struct {
 	pool sync.Pool
 }
@@ -36,5 +36,5 @@ func (p *SamplePool[F, T]) Get() *[]F {
 }
 
 func (p *SamplePool[F, T]) Put(samples *[]F) {
-	p.pool.Put(&samples)
+	p.pool.Put(samples)
 }
