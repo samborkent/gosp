@@ -2,6 +2,7 @@ package gosp
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -64,13 +65,15 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 }
 
 // convertMono writes the encoded sampled to the internal [io.Writer].
-func (e *Encoder[F, T]) convertMono(src []Mono[T]) (int, error) {
-	writer := bufio.NewWriterSize(e.w, len(src)*e.channels*e.byteSize)
+func (e *Encoder[F, T]) convertMono(src []Mono[T]) (int64, error) {
+	buf := e.pool.Get()
+	if buf == nil {
+		// Allocate in-case the pool does not have a pre-allocated entry ready.
+		buf = bytes.NewBuffer(make([]byte, len(src)*e.channels*e.byteSize))
+	}
 
-	var bytesWritten int
-	var err error
+	bufio.NewWriterSize(e.w, len(src)*e.channels*e.byteSize)
 
-byteSwitch:
 	switch e.byteSize {
 	case 1: // 8 bit
 		minLen := len(src)
@@ -78,17 +81,19 @@ byteSwitch:
 		// Abuse overflow rules to deduce specific type.
 		if T(0)-1 > 0 {
 			// uint8
-			bytesWritten, err = writer.Write(unsafe.Slice((*uint8)(unsafe.Pointer(&src[0])), minLen))
-			break byteSwitch
+			n, err := e.w.Write(unsafe.Slice((*uint8)(unsafe.Pointer(&src[0])), minLen))
+			e.pool.Put(buf)
+			return int64(n), err
 		}
 
 		// int8
 		for i := range minLen {
-			err = writer.WriteByte(byte(src[i][0]))
-			if err != nil {
-				break byteSwitch
-			}
+			_ = buf.WriteByte(byte(src[i][0]))
 		}
+
+		n, err := buf.WriteTo(e.w)
+		e.pool.Put(buf)
+		return n, err
 	// case 2: // 16 bit
 	// 	minLen := min(len(dst), len(src)/d.byteSize)
 
@@ -159,14 +164,4 @@ byteSwitch:
 	default:
 		panic("gosp: Encoder.convertMono: unknown bit size encountered")
 	}
-
-	if err != nil {
-		return 0, err
-	}
-
-	if err := writer.Flush(); err != nil {
-		return 0, err
-	}
-
-	return bytesWritten, nil
 }

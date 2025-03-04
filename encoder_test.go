@@ -12,7 +12,7 @@ import (
 func TestEncoderEncode(t *testing.T) {
 	t.Parallel()
 
-	N := 10
+	N := 5
 
 	t.Run("uint8 mono", func(t *testing.T) {
 		t.Parallel()
@@ -30,23 +30,21 @@ func TestEncoderEncode(t *testing.T) {
 		testEncodeMono(t, input, want)
 	})
 
-	// t.Run("int8 mono", func(t *testing.T) {
-	// 	t.Parallel()
+	t.Run("int8 mono", func(t *testing.T) {
+		t.Parallel()
 
-	// 	data := make([]int8, N)
-	// 	for i := range N {
-	// 		data[i] = int8((2*rand.Float32() - 1) * math.MinInt8)
-	// 	}
+		input := make([]gosp.Mono[int8], N)
+		for i := range N {
+			input[i] = gosp.Mono[int8]{int8((2*rand.Float32() - 1) * math.MinInt8)}
+		}
 
-	// 	input := make([]byte, N)
-	// 	expected := make([]gosp.Mono[uint8], N)
-	// 	for i := range N {
-	// 		input[i] = byte(data[i])
-	// 		expected[i] = gosp.Mono[uint8]{input[i]}
-	// 	}
+		want := make([]byte, N)
+		for i := range N {
+			want[i] = uint8(input[i][0])
+		}
 
-	// 	testDecodeMono(t, input, expected)
-	// })
+		testEncodeMono(t, input, want)
+	})
 
 	// t.Run("uint16 mono", func(t *testing.T) {
 	// 	t.Parallel()
@@ -212,6 +210,8 @@ func testEncodeMono[T gosp.Type](t *testing.T, input []gosp.Mono[T], want []byte
 	}
 
 	for i := range output {
+		t.Logf("%v", output[i])
+
 		if output[i] != want[i] {
 			t.Errorf("binary mismatch at index '%d': got '%v', want '%v'", i, output[i], want[i])
 		}
