@@ -7,12 +7,12 @@ type Float interface {
 
 // Signed integer type.
 type Int interface {
-	int8 | int16 | int32 | int64
+	int8 | int16 | int32
 }
 
 // Unsigned integer type.
 type Uint interface {
-	uint8 | uint16 | uint32 | uint64
+	uint8 | uint16 | uint32
 }
 
 // Fixed-point type.

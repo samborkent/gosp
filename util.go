@@ -6,6 +6,8 @@ import (
 )
 
 var (
+	maxInt8  = math.MaxInt8
+	maxInt16 = math.MaxInt16
 	maxInt32 = math.MaxInt32
 	maxInt64 = math.MaxInt64
 )
@@ -23,6 +25,10 @@ func isUnsigned[T Type]() bool {
 
 func isSigned[T Type]() bool {
 	switch unsafe.Sizeof(T(0)) {
+	case 1: // 8-bit
+		return T(maxInt8)+1 < 0
+	case 2: // 16-bit
+		return T(maxInt16)+1 < 0
 	case 4: // 32-bit
 		return T(maxInt32)+1 < 0
 	case 8: // 64-bit

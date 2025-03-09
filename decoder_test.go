@@ -140,42 +140,6 @@ func TestDecoderDecode(t *testing.T) {
 		testDecodeMono(t, input, expected)
 	})
 
-	t.Run("uint64 mono", func(t *testing.T) {
-		t.Parallel()
-
-		data := make([]uint64, N)
-		for i := range N {
-			data[i] = rand.Uint64()
-		}
-
-		input := make([]byte, 8*N)
-		expected := make([]gsp.Mono[uint64], N)
-		for i := range N {
-			binary.LittleEndian.PutUint64(input[8*i:8*i+8], data[i])
-			expected[i] = gsp.ToMono(data[i])
-		}
-
-		testDecodeMono(t, input, expected)
-	})
-
-	t.Run("int64 mono", func(t *testing.T) {
-		t.Parallel()
-
-		data := make([]int64, N)
-		for i := range N {
-			data[i] = int64((2*rand.Float64() - 1) * math.MinInt64)
-		}
-
-		input := make([]byte, 8*N)
-		expected := make([]gsp.Mono[int64], N)
-		for i := range N {
-			binary.LittleEndian.PutUint64(input[8*i:8*i+8], uint64(data[i]))
-			expected[i] = gsp.ToMono(data[i])
-		}
-
-		testDecodeMono(t, input, expected)
-	})
-
 	t.Run("float64 mono", func(t *testing.T) {
 		t.Parallel()
 

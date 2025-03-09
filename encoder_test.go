@@ -128,38 +128,6 @@ func TestEncoderEncode(t *testing.T) {
 		testEncodeMono(t, input, want)
 	})
 
-	t.Run("uint64 mono", func(t *testing.T) {
-		t.Parallel()
-
-		input := make([]gsp.Mono[uint64], N)
-		for i := range N {
-			input[i] = gsp.ToMono(rand.Uint64())
-		}
-
-		want := make([]byte, 8*N)
-		for i := range N {
-			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], input[i].M())
-		}
-
-		testEncodeMono(t, input, want)
-	})
-
-	t.Run("int64 mono", func(t *testing.T) {
-		t.Parallel()
-
-		input := make([]gsp.Mono[int64], N)
-		for i := range N {
-			input[i] = gsp.ToMono(int64((2*rand.Float64() - 1) * math.MinInt64))
-		}
-
-		want := make([]byte, 8*N)
-		for i := range N {
-			binary.LittleEndian.PutUint64(want[8*i:8*(i+1)], uint64(input[i].M()))
-		}
-
-		testEncodeMono(t, input, want)
-	})
-
 	t.Run("float64 mono", func(t *testing.T) {
 		t.Parallel()
 
