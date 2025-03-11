@@ -32,7 +32,7 @@ func NewConverter[In Frame[I], Out Frame[O], I Type, O Type](bufferSize int) *Co
 		cancel()
 		close(input)
 		close(output)
-	}, nil)
+	}, 0)
 
 	go converter.run(ctx)
 
