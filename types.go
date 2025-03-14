@@ -37,13 +37,3 @@ type Type interface {
 type Frame[T Type] interface {
 	Mono[T] | Stereo[T] | MultiChannel[T]
 }
-
-// Implementations must not retain p.
-type Reader[F Frame[T], T Type] interface {
-	Read(p []F) (framesRead int, err error)
-}
-
-// Implementations must not retain p.
-type Writer[F Frame[T], T Type] interface {
-	Write(p []F) (framesWrtie int, err error)
-}

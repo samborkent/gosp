@@ -2,115 +2,66 @@ package gsp
 
 import (
 	"context"
-	"time"
+	"runtime"
 )
 
-// TODO: consider making channels buffers
-// TODO: add back buffer processor support
-// TODO: add parallel processing support based on available threads for buffer processing
-// TODO: add SIMD support if possible?
-
 type SamplePipeline[F Frame[T], T Type] struct {
-	sampleRate int
-
-	clock                  *time.Ticker
-	input, bufferedInput   chan F
-	output, bufferedOutput chan F
-
-	circularInputBuffer, circularOutputBuffer *circularBuffer[F, F, T]
-
-	overflowCount uint64
-
 	processors []SampleProcessor[F, T]
 
-	done chan struct{}
+	input, output chan F
+
+	initialized bool
 }
 
-// When the buffer size is set to zero, the pipeline will operate in sample mode.
-// This means it will implement SampleReader and SampleWriter.
-// If the buffer size is greater than zero, it will implement Reader and Writer.
-func NewSamplePipeline[F Frame[T], T Type](sampleRate int, processors ...SampleProcessor[F, T]) (*SamplePipeline[F, T], error) {
-	var p SamplePipeline[F, T]
+func NewSamplePipeline[F Frame[T], T Type](processors ...SampleProcessor[F, T]) *SamplePipeline[F, T] {
+	if len(processors) == 0 {
+		return &SamplePipeline[F, T]{}
+	}
 
-	p.sampleRate = sampleRate
-	p.processors = processors
-	p.done = make(chan struct{})
+	pipeline := &SamplePipeline[F, T]{
+		processors:  processors,
+		input:       make(chan F, 1),
+		output:      make(chan F, 1),
+		initialized: true,
+	}
 
-	p.clock = time.NewTicker(time.Duration(float64(time.Second) / float64(sampleRate)))
+	ctx, cancel := context.WithCancel(context.Background())
 
-	const circularBufferLength = 3
+	runtime.AddCleanup(pipeline, func(_ int) {
+		cancel()
+		close(pipeline.input)
+		close(pipeline.output)
+	}, 0)
 
-	p.input = make(chan F)
-	p.bufferedInput = make(chan F, circularBufferLength)
-	p.output = make(chan F)
-	p.bufferedOutput = make(chan F, circularBufferLength)
+	go pipeline.run(ctx)
 
-	p.circularInputBuffer = newCircularBuffer[F, F, T](p.input, p.bufferedInput)
-	p.circularOutputBuffer = newCircularBuffer[F, F, T](p.output, p.bufferedOutput)
-
-	return &p, nil
+	return pipeline
 }
 
-func (p *SamplePipeline[F, T]) ReadSample() (F, error) {
-	return <-p.bufferedOutput, nil
+func (p *SamplePipeline[F, T]) Loop() <-chan F {
+	return p.output
 }
 
-func (p *SamplePipeline[F, T]) WriteSample(s F) error {
+func (p *SamplePipeline[F, T]) ReadSample() F {
+	return <-p.output
+}
+
+func (p *SamplePipeline[F, T]) WriteSample(s F) {
 	p.input <- s
-	return nil
 }
 
-func (p *SamplePipeline[F, T]) OverflowCount() uint64 {
-	return p.overflowCount + p.circularInputBuffer.OverflowCount() + p.circularOutputBuffer.OverflowCount()
-}
-
-func (p *SamplePipeline[F, T]) Start(ctx context.Context) {
-	go p.circularInputBuffer.Run(ctx)
-	go p.circularOutputBuffer.Run(ctx)
-
-	// Flush processors
-	p.processSample(*new(F))
-
-whileLoop:
+func (p *SamplePipeline[F, T]) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			break whileLoop
-		case input := <-p.bufferedInput:
-			// If input comes before the clock tick, we still have to wait for the clock tick to synchronize
-			<-p.clock.C
-
-			select {
-			case p.output <- p.processSample(input):
-			default:
-				p.overflowCount++
-			}
-		case <-p.clock.C:
-			// In case no input comes in due time, send a zero sample
-			select {
-			case p.output <- p.processSample(*new(F)):
-			default:
-				p.overflowCount++
-			}
+			return
+		case input := <-p.input:
+			p.output <- p.process(input)
 		}
 	}
-
-	close(p.done)
 }
 
-func (p *SamplePipeline[F, T]) Close() error {
-	p.clock.Stop()
-	<-p.done
-
-	close(p.input)
-	close(p.bufferedInput)
-	close(p.output)
-	close(p.bufferedOutput)
-
-	return nil
-}
-
-func (p *SamplePipeline[F, T]) processSample(sample F) F {
+func (p *SamplePipeline[F, T]) process(sample F) F {
 	for _, processor := range p.processors {
 		sample = processor.Process(sample)
 	}
