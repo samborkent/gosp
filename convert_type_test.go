@@ -75,16 +75,16 @@ func TestConvertTypeUint8(t *testing.T) {
 
 		checkConvertType(t, minimum, float32(-1), "minimum")
 		checkConvertType(t, zero, float32(0), "zero")
-		checkConvertType(t, maximum, float32(int16(maximum)-int16(zeroUint8))/(-math.MinInt8), "maximum")
-		checkConvertType(t, random, float32(int16(random)-int16(zeroUint8))/(-math.MinInt8), "random")
+		checkConvertType(t, maximum, float32(1), "maximum")
+		checkConvertType(t, random, float32(int16(random)-int16(zeroUint8))/math.MaxInt8, "random")
 	})
 	t.Run("uint8->float64", func(t *testing.T) {
 		t.Parallel()
 
 		checkConvertType(t, minimum, float64(-1), "minimum")
 		checkConvertType(t, zero, float64(0), "zero")
-		checkConvertType(t, maximum, float64(int16(maximum)-int16(zeroUint8))/(-math.MinInt8), "maximum")
-		checkConvertType(t, random, float64(int16(random)-int16(zeroUint8))/(-math.MinInt8), "random")
+		checkConvertType(t, maximum, float64(1), "maximum")
+		checkConvertType(t, random, float64(int16(random)-int16(zeroUint8))/math.MaxInt8, "random")
 	})
 }
 
@@ -149,16 +149,16 @@ func TestConvertTypeInt8(t *testing.T) {
 
 		checkConvertType(t, minimum, float32(-1), "minimum")
 		checkConvertType(t, zero, float32(0), "zero")
-		checkConvertType(t, maximum, float32(maximum)/(-math.MinInt8), "maximum")
-		checkConvertType(t, random, float32(random)/(-math.MinInt8), "random")
+		checkConvertType(t, maximum, float32(1), "maximum")
+		checkConvertType(t, random, float32(random)/math.MaxInt8, "random")
 	})
 	t.Run("int8->float64", func(t *testing.T) {
 		t.Parallel()
 
 		checkConvertType(t, minimum, float64(-1), "minimum")
 		checkConvertType(t, zero, float64(0), "zero")
-		checkConvertType(t, maximum, float64(maximum)/(-math.MinInt8), "maximum")
-		checkConvertType(t, random, float64(random)/(-math.MinInt8), "random")
+		checkConvertType(t, maximum, float64(1), "maximum")
+		checkConvertType(t, random, float64(random)/math.MaxInt8, "random")
 	})
 }
 
@@ -176,7 +176,7 @@ func TestConvertTypeUint16(t *testing.T) {
 		checkConvertType(t, minimum, uint8(0), "minimum")
 		checkConvertType(t, zero, zeroUint8, "zero")
 		checkConvertType(t, maximum, uint8(math.MaxUint8), "maximum")
-		checkConvertType(t, random, uint16(random)>>8, "random")
+		checkConvertType(t, random, uint8(random>>8), "random")
 	})
 	t.Run("uint16->int8", func(t *testing.T) {
 		t.Parallel()
@@ -223,16 +223,16 @@ func TestConvertTypeUint16(t *testing.T) {
 
 		checkConvertType(t, minimum, float32(-1), "minimum")
 		checkConvertType(t, zero, float32(0), "zero")
-		checkConvertType(t, maximum, float32(int32(maximum)-int32(zeroUint16))/(-math.MinInt16), "maximum")
-		checkConvertType(t, random, float32(int32(random)-int32(zeroUint16))/(-math.MinInt16), "random")
+		checkConvertType(t, maximum, float32(1), "maximum")
+		checkConvertType(t, random, float32(int32(random)-int32(zeroUint16))/math.MaxInt16, "random")
 	})
 	t.Run("uint16->float64", func(t *testing.T) {
 		t.Parallel()
 
 		checkConvertType(t, minimum, float64(-1), "minimum")
 		checkConvertType(t, zero, float64(0), "zero")
-		checkConvertType(t, maximum, float64(int32(maximum)-int32(zeroUint16))/(-math.MinInt16), "maximum")
-		checkConvertType(t, random, float64(int32(random)-int32(zeroUint16))/(-math.MinInt16), "random")
+		checkConvertType(t, maximum, float64(1), "maximum")
+		checkConvertType(t, random, float64(int32(random)-int32(zeroUint16))/math.MaxInt16, "random")
 	})
 }
 
@@ -297,16 +297,16 @@ func TestConvertTypeInt16(t *testing.T) {
 
 		checkConvertType(t, minimum, float32(-1), "minimum")
 		checkConvertType(t, zero, float32(0), "zero")
-		checkConvertType(t, maximum, float32(maximum)/(-math.MinInt16), "maximum")
-		checkConvertType(t, random, float32(random)/(-math.MinInt16), "random")
+		checkConvertType(t, maximum, float32(1), "maximum")
+		checkConvertType(t, random, float32(random)/math.MaxInt16, "random")
 	})
 	t.Run("int16->float64", func(t *testing.T) {
 		t.Parallel()
 
 		checkConvertType(t, minimum, float64(-1), "minimum")
 		checkConvertType(t, zero, float64(0), "zero")
-		checkConvertType(t, maximum, float64(maximum)/(-math.MinInt16), "maximum")
-		checkConvertType(t, random, float64(random)/(-math.MinInt16), "random")
+		checkConvertType(t, maximum, float64(1), "maximum")
+		checkConvertType(t, random, float64(random)/math.MaxInt16, "random")
 	})
 }
 
@@ -371,16 +371,16 @@ func TestConvertTypeUint32(t *testing.T) {
 
 		checkConvertType(t, minimum, float32(-1), "minimum")
 		checkConvertType(t, zero, float32(0), "zero")
-		checkConvertType(t, maximum, float32(int64(maximum)-int64(zeroUint32))/(-math.MinInt32), "maximum")
-		checkConvertType(t, random, float32(int64(random)-int64(zeroUint32))/(-math.MinInt32), "random")
+		checkConvertType(t, maximum, float32(1), "maximum")
+		checkConvertType(t, random, float32(int64(random)-int64(zeroUint32))/math.MaxInt32, "random")
 	})
 	t.Run("uint32->float64", func(t *testing.T) {
 		t.Parallel()
 
 		checkConvertType(t, minimum, float64(-1), "minimum")
 		checkConvertType(t, zero, float64(0), "zero")
-		checkConvertType(t, maximum, float64(int64(maximum)-int64(zeroUint32))/(-math.MinInt32), "maximum")
-		checkConvertType(t, random, float64(int64(random)-int64(zeroUint32))/(-math.MinInt32), "random")
+		checkConvertType(t, maximum, float64(1), "maximum")
+		checkConvertType(t, random, float64(int64(random)-int64(zeroUint32))/math.MaxInt32, "random")
 	})
 }
 
@@ -445,16 +445,16 @@ func TestConvertTypeInt32(t *testing.T) {
 
 		checkConvertType(t, minimum, float32(-1), "minimum")
 		checkConvertType(t, zero, float32(0), "zero")
-		checkConvertType(t, maximum, float32(maximum)/(-math.MinInt32), "maximum")
-		checkConvertType(t, random, float32(random)/(-math.MinInt32), "random")
+		checkConvertType(t, maximum, float32(1), "maximum")
+		checkConvertType(t, random, float32(random)/math.MaxInt32, "random")
 	})
 	t.Run("int32->float64", func(t *testing.T) {
 		t.Parallel()
 
 		checkConvertType(t, minimum, float64(-1), "minimum")
 		checkConvertType(t, zero, float64(0), "zero")
-		checkConvertType(t, maximum, float64(maximum)/(-math.MinInt32), "maximum")
-		checkConvertType(t, random, float64(random)/(-math.MinInt32), "random")
+		checkConvertType(t, maximum, float64(1), "maximum")
+		checkConvertType(t, random, float64(random)/math.MaxInt32, "random")
 	})
 }
 
@@ -512,7 +512,7 @@ func TestConvertTypeFloat32(t *testing.T) {
 		checkConvertType(t, minimum, int32(-math.MaxInt32), "minimum")
 		checkConvertType(t, zero, int32(0), "zero")
 		checkConvertType(t, maximum, int32(math.MaxInt32), "maximum")
-		checkConvertType(t, random, int32(float64(random)*math.MaxInt32), "random")
+		checkConvertType(t, random, int32(float32(random)*math.MaxInt32), "random")
 	})
 	t.Run("float32->float32", func(t *testing.T) {
 		t.Parallel()

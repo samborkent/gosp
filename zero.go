@@ -14,8 +14,6 @@ func Zero[T Type]() T {
 			return T(zeroUint16)
 		case 4:
 			return T(zeroUint32)
-		case 8:
-			return T(zeroUint64)
 		default:
 			panic("gsp: Zero: unknown bit size encountered")
 		}
