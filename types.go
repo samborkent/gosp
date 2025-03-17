@@ -33,6 +33,9 @@ type Type interface {
 	Signed | Unsigned
 }
 
+// Mono channel type.
+type Mono Type
+
 // Frame is mono, stereo, or multi-channel sample.
 type Frame[T Type] interface {
 	Type | Mono | [2]T | Stereo[T] | []T | MultiChannel[T]

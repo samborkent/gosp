@@ -3,7 +3,6 @@ package gsp
 import (
 	"context"
 	"runtime"
-	"sync"
 )
 
 type Pipeline[F Frame[T], T Type] struct {
@@ -11,7 +10,7 @@ type Pipeline[F Frame[T], T Type] struct {
 
 	input, output chan []F
 
-	pool sync.Pool
+	pool *FramePool[F, T]
 
 	initialized bool
 }
@@ -22,15 +21,10 @@ func NewPipeline[F Frame[T], T Type](processors ...BufferProcessor[F, T]) *Pipel
 	}
 
 	pipeline := &Pipeline[F, T]{
-		processors: processors,
-		input:      make(chan []F, 1),
-		output:     make(chan []F, 1),
-		pool: sync.Pool{
-			New: func() any {
-				buf := make([]F, 1024)
-				return &buf
-			},
-		},
+		processors:  processors,
+		input:       make(chan []F, 1),
+		output:      make(chan []F, 1),
+		pool:        NewFramePool[F, T](1024),
 		initialized: true,
 	}
 
@@ -68,15 +62,11 @@ func (p *Pipeline[F, T]) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case input := <-p.input:
-			bufPtr, ok := p.pool.Get().(*[]F)
-			if !ok || bufPtr == nil {
-				output = make([]F, len(input))
-			} else {
-				output = *bufPtr
+			bufPtr := p.pool.Get()
+			output = *bufPtr
 
-				if len(input) > len(output) {
-					output = make([]F, len(input))
-				}
+			if len(input) > len(output) {
+				output = make([]F, len(input))
 			}
 
 			p.process(output, input)
