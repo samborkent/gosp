@@ -23,15 +23,23 @@ var (
 )
 
 const (
-	invMaxInt8_32  float32 = 1.0 / math.MaxInt8
-	invMaxInt16_32 float32 = 1.0 / math.MaxInt16
-	invMaxInt32_32 float32 = 1.0 / math.MaxInt32
+	maxInt8_32  float32 = math.MaxInt8
+	maxInt16_32 float32 = math.MaxInt16
+	maxInt32_32 float32 = math.MaxInt32
+
+	invMaxInt8_32  float32 = 1.0 / maxInt8_32
+	invMaxInt16_32 float32 = 1.0 / maxInt16_32
+	invMaxInt32_32 float32 = 1.0 / maxInt32_32
 )
 
 const (
-	invMaxInt8_64  float64 = 1.0 / math.MaxInt8
-	invMaxInt16_64 float64 = 1.0 / math.MaxInt16
-	invMaxInt32_64 float64 = 1.0 / math.MaxInt32
+	maxInt8_64  float64 = math.MaxInt8
+	maxInt16_64 float64 = math.MaxInt16
+	maxInt32_64 float64 = math.MaxInt32
+
+	invMaxInt8_64  float64 = 1.0 / maxInt8_64
+	invMaxInt16_64 float64 = 1.0 / maxInt16_64
+	invMaxInt32_64 float64 = 1.0 / maxInt32_64
 )
 
 var (

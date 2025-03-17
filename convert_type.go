@@ -4,6 +4,8 @@ import (
 	"errors"
 	"math"
 	"unsafe"
+
+	"github.com/samborkent/gsp/internal/math32"
 )
 
 // TODO: fix scaling of
@@ -103,8 +105,7 @@ func ConvertType[O Type, I Type](in I) (out O) {
 			case isUnsigned[I]():
 				// uint8 -> float64
 				if in > 0 {
-					// TODO: revise
-					return O(float64(int16(in)-int16(zeroUint8)) * invMaxInt8_64)
+					return O(float64(int8(in)-maxInt8-1) * invMaxInt8_64)
 				}
 
 				return O(minFloat64)
@@ -247,18 +248,18 @@ func ConvertType[O Type, I Type](in I) (out O) {
 			default:
 				if isUnsigned[O]() {
 					// float32 -> uint8
-					if in >= I(minFloat32) && in <= I(1) {
-						return O(uint8(in*math.MaxInt8) + zeroUint8)
+					if in >= I(minFloat32) && in <= 1 {
+						return O(uint8(quantize32[int8](float32(in)*maxInt8_32)) + zeroUint8)
 					} else if in > 1 {
 						return O(maxUint8)
 					} else {
-						return O(1)
+						return 1
 					}
 				}
 
 				// float32 -> int8
-				if in >= I(minFloat32) && in <= I(1) {
-					return O(int8(in * math.MaxInt8))
+				if in >= I(minFloat32) && in <= 1 {
+					return O(quantize32[int8](float32(in) * maxInt8_32))
 				} else if in > 1 {
 					return O(maxInt8)
 				} else {
@@ -286,18 +287,18 @@ func ConvertType[O Type, I Type](in I) (out O) {
 			default:
 				if isUnsigned[O]() {
 					// float32 -> uint16
-					if in >= I(minFloat32) && in <= I(1) {
-						return O(uint16(in*I(maxInt16)) + zeroUint16)
+					if in >= I(minFloat32) && in <= 1 {
+						return O(uint16(quantize32[int16](float32(in)*maxInt16_32)) + zeroUint16)
 					} else if in > 1 {
 						return O(maxUint16)
 					} else {
-						return O(1)
+						return 1
 					}
 				}
 
 				// float32 -> int16
-				if in >= I(minFloat32) && in <= I(1) {
-					return O(int16(in * I(maxInt16)))
+				if in >= I(minFloat32) && in <= 1 {
+					return O(quantize32[int16](float32(in) * maxInt16_32))
 				} else if in > 1 {
 					return O(maxInt16)
 				} else {
@@ -342,17 +343,17 @@ func ConvertType[O Type, I Type](in I) (out O) {
 				switch {
 				case isUnsigned[O]():
 					// float32 -> uint32
-					if in >= I(minFloat32) && in <= I(1) {
-						return O(uint32(in*I(maxInt32)) + zeroUint32)
+					if in >= I(minFloat32) && in <= 1 {
+						return O(uint32(quantize64[int32](float64(in)*maxInt32_64)) + zeroUint32)
 					} else if in > 1 {
 						return O(maxUint32)
 					} else {
-						return O(1)
+						return 1
 					}
 				case isSigned[O]():
 					// float32 -> int32
-					if in >= I(minFloat32) && in <= I(1) {
-						return O(int32(in * I(maxInt32)))
+					if in >= I(minFloat32) && in <= 1 {
+						return O(quantize64[int32](float64(in) * maxInt32_64))
 					} else if in > 1 {
 						return O(maxInt32)
 					} else {
@@ -391,18 +392,18 @@ func ConvertType[O Type, I Type](in I) (out O) {
 		case 1: // 64-bit -> 8-bit
 			if isUnsigned[O]() {
 				// float64 -> uint8
-				if in >= I(minFloat64) && in <= I(1) {
-					return O(uint8(in*math.MaxInt8) + zeroUint8)
+				if in >= I(minFloat64) && in <= 1 {
+					return O(uint8(quantize64[int8](float64(in)*maxInt8_64)) + zeroUint8)
 				} else if in > 1 {
 					return O(maxUint8)
 				} else {
-					return O(1)
+					return 1
 				}
 			}
 
 			// float64 -> int8
-			if in >= I(minFloat64) && in <= I(1) {
-				return O(int8(in * math.MaxInt8))
+			if in >= I(minFloat64) && in <= 1 {
+				return O(quantize64[int8](float64(in) * maxInt8_64))
 			} else if in > 1 {
 				return O(maxInt8)
 			} else {
@@ -411,18 +412,18 @@ func ConvertType[O Type, I Type](in I) (out O) {
 		case 2: // 64-bit -> 16-bit
 			if isUnsigned[O]() {
 				// float64 -> uint16
-				if in >= I(minFloat64) && in <= I(1) {
-					return O(uint16(in*I(maxInt16)) + zeroUint16)
+				if in >= I(minFloat64) && in <= 1 {
+					return O(uint16(quantize64[int16](float64(in)*maxInt16_64)) + zeroUint16)
 				} else if in > 1 {
 					return O(maxUint16)
 				} else {
-					return O(1)
+					return 1
 				}
 			}
 
 			// float64 -> int16
-			if in >= I(minFloat64) && in <= I(1) {
-				return O(int16(in * I(maxInt16)))
+			if in >= I(minFloat64) && in <= 1 {
+				return O(quantize64[int16](float64(in) * maxInt16_64))
 			} else if in > 1 {
 				return O(maxInt16)
 			} else {
@@ -432,17 +433,17 @@ func ConvertType[O Type, I Type](in I) (out O) {
 			switch {
 			case isUnsigned[O]():
 				// float64 -> uint32
-				if in >= I(minFloat64) && in <= I(1) {
-					return O(uint32(in*I(maxInt32)) + zeroUint32)
+				if in >= I(minFloat64) && in <= 1 {
+					return O(uint32(quantize64[int32](float64(in)*maxInt32_64)) + zeroUint32)
 				} else if in > 1 {
 					return O(maxUint32)
 				} else {
-					return O(1)
+					return 1
 				}
 			case isSigned[O]():
 				// float64 -> int32
-				if in >= I(minFloat64) && in <= I(1) {
-					return O(int32(in * I(maxInt32)))
+				if in >= I(minFloat64) && in <= 1 {
+					return O(quantize64[int32](float64(in) * maxInt32_64))
 				} else if in > 1 {
 					return O(maxInt32)
 				} else {
@@ -461,4 +462,12 @@ func ConvertType[O Type, I Type](in I) (out O) {
 	default:
 		panic(errUnknownInputBitSize.Error())
 	}
+}
+
+func quantize32[T Signed](num float32) T {
+	return T(math32.Round(num))
+}
+
+func quantize64[T Signed](num float64) T {
+	return T(math.Round(num))
 }
