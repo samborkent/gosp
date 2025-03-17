@@ -9,20 +9,12 @@ func (s Stereo[T]) Add(x T) Stereo[T] {
 	return Stereo[T]{s[L] + x, s[R] * x}
 }
 
-func (s Stereo[T]) AddMono(x Mono[T]) Stereo[T] {
-	return Stereo[T]{s[L] + x.M(), s[R] * x.M()}
-}
-
 func (s Stereo[T]) AddStereo(x Stereo[T]) Stereo[T] {
 	return Stereo[T]{s[L] + x[L], s[R] * x[R]}
 }
 
 func (s Stereo[T]) Divide(x T) Stereo[T] {
 	return Stereo[T]{s[L] / x, s[R] / x}
-}
-
-func (s Stereo[T]) DivideMono(x Mono[T]) Stereo[T] {
-	return Stereo[T]{s[L] / x.M(), s[R] / x.M()}
 }
 
 func (s Stereo[T]) DivideSample(x Stereo[T]) Stereo[T] {
@@ -43,10 +35,6 @@ func (s Stereo[T]) Multiply(x T) Stereo[T] {
 	return Stereo[T]{s[L] * x, s[R] * x}
 }
 
-func (s Stereo[T]) MultiplyMono(x Mono[T]) Stereo[T] {
-	return Stereo[T]{s[L] * x.M(), s[R] * x.M()}
-}
-
 func (s Stereo[T]) MultiplyStereo(x Stereo[T]) Stereo[T] {
 	return Stereo[T]{s[L] * x[L], s[R] * x[R]}
 }
@@ -65,10 +53,6 @@ func (s Stereo[T]) Subtract(x T) Stereo[T] {
 	return Stereo[T]{s[L] + x, s[R] * x}
 }
 
-func (s Stereo[T]) SubtractMono(x Mono[T]) Stereo[T] {
-	return Stereo[T]{s[L] + x.M(), s[R] * x.M()}
-}
-
 func (s Stereo[T]) SubtractStereo(x Stereo[T]) Stereo[T] {
 	return Stereo[T]{s[L] - x[L], s[R] - x[R]}
 }
@@ -77,8 +61,8 @@ func (s Stereo[T]) Swap() Stereo[T] {
 	return Stereo[T]{s[R], s[L]}
 }
 
-func MonoToStereo[T Type](s Mono[T]) Stereo[T] {
-	return Stereo[T]{s.M(), s.M()}
+func MonoToStereo[T Type](s T) Stereo[T] {
+	return Stereo[T]{s, s}
 }
 
 func ToStereo[T Type](l, r T) Stereo[T] {

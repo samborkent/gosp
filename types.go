@@ -35,5 +35,5 @@ type Type interface {
 
 // Frame is mono, stereo, or multi-channel sample.
 type Frame[T Type] interface {
-	Mono[T] | Stereo[T] | MultiChannel[T]
+	Type | Mono | [2]T | Stereo[T] | []T | MultiChannel[T]
 }

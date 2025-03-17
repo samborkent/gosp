@@ -31,10 +31,25 @@ func NewEncoder[F Frame[T], T Type](w io.Writer, opts ...EncodingOption) *Encode
 		opt(&cfg)
 	}
 
+	var channels int
+
+	switch frameType := any(*new(F)).(type) {
+	case T:
+		channels = 1
+	case [2]T, Stereo[T]:
+		channels = 2
+	case []T:
+		channels = len(frameType)
+	case MultiChannel[T]:
+		channels = len(frameType)
+	default:
+		panic("gsp: NewEncoder: unknown audio frame type")
+	}
+
 	return &Encoder[F, T]{
 		w:           w,
 		pool:        NewByteBufferPool(),
-		channels:    len(*new(F)),
+		channels:    channels,
 		byteSize:    int(unsafe.Sizeof(T(0))),
 		bigEndian:   cfg.BigEndian,
 		initialized: true,
@@ -64,7 +79,7 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 	switch e.channels {
 	case 1:
 		// There is only a single channel, so we can safely perform this unsafe type-casting.
-		samplesEncoded := e.convertMono(buf, unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)))
+		samplesEncoded := e.convertMono(buf, unsafe.Slice((*T)(unsafe.Pointer(&s[0])), len(s)))
 		e.samplesEncoded.Add(int64(samplesEncoded))
 	case 2:
 		panic("gsp: Encoder.Encode: stereo encoding not implemented")
@@ -84,7 +99,7 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 }
 
 // convertMono writes the encoded sampled to the internal [io.Writer].
-func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
+func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []T) int {
 	switch e.byteSize {
 	case 1: // 8 bit
 		// Abuse overflow rules to deduce specific type.
@@ -96,7 +111,7 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 
 		// int8
 		for i := range len(src) {
-			_ = buf.WriteByte(byte(src[i].M()))
+			_ = buf.WriteByte(byte(src[i]))
 		}
 
 		return len(src)
@@ -105,13 +120,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		if e.bigEndian {
 			for i := range len(src) {
 				var data [2]byte
-				binary.BigEndian.PutUint16(data[:], uint16(src[i].M()))
+				binary.BigEndian.PutUint16(data[:], uint16(src[i]))
 				_, _ = buf.Write(data[:])
 			}
 		} else {
 			for i := range len(src) {
 				var data [2]byte
-				binary.LittleEndian.PutUint16(data[:], uint16(src[i].M()))
+				binary.LittleEndian.PutUint16(data[:], uint16(src[i]))
 				_, _ = buf.Write(data[:])
 			}
 		}
@@ -124,13 +139,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 			if e.bigEndian {
 				for i := range len(src) {
 					var data [4]byte
-					binary.BigEndian.PutUint32(data[:], uint32(src[i].M()))
+					binary.BigEndian.PutUint32(data[:], uint32(src[i]))
 					_, _ = buf.Write(data[:])
 				}
 			} else {
 				for i := range len(src) {
 					var data [4]byte
-					binary.LittleEndian.PutUint32(data[:], uint32(src[i].M()))
+					binary.LittleEndian.PutUint32(data[:], uint32(src[i]))
 					_, _ = buf.Write(data[:])
 				}
 			}
@@ -142,13 +157,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		if e.bigEndian {
 			for i := range len(src) {
 				var data [4]byte
-				binary.BigEndian.PutUint32(data[:], math.Float32bits(float32(src[i].M())))
+				binary.BigEndian.PutUint32(data[:], math.Float32bits(float32(src[i])))
 				_, _ = buf.Write(data[:])
 			}
 		} else {
 			for i := range len(src) {
 				var data [4]byte
-				binary.LittleEndian.PutUint32(data[:], math.Float32bits(float32(src[i].M())))
+				binary.LittleEndian.PutUint32(data[:], math.Float32bits(float32(src[i])))
 				_, _ = buf.Write(data[:])
 			}
 		}
@@ -161,13 +176,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 			if e.bigEndian {
 				for i := range len(src) {
 					var data [8]byte
-					binary.BigEndian.PutUint64(data[:], uint64(src[i].M()))
+					binary.BigEndian.PutUint64(data[:], uint64(src[i]))
 					_, _ = buf.Write(data[:])
 				}
 			} else {
 				for i := range len(src) {
 					var data [8]byte
-					binary.LittleEndian.PutUint64(data[:], uint64(src[i].M()))
+					binary.LittleEndian.PutUint64(data[:], uint64(src[i]))
 					_, _ = buf.Write(data[:])
 				}
 			}
@@ -179,13 +194,13 @@ func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []Mono[T]) int {
 		if e.bigEndian {
 			for i := range len(src) {
 				var data [8]byte
-				binary.BigEndian.PutUint64(data[:], math.Float64bits(float64(src[i].M())))
+				binary.BigEndian.PutUint64(data[:], math.Float64bits(float64(src[i])))
 				_, _ = buf.Write(data[:])
 			}
 		} else {
 			for i := range len(src) {
 				var data [8]byte
-				binary.LittleEndian.PutUint64(data[:], math.Float64bits(float64(src[i].M())))
+				binary.LittleEndian.PutUint64(data[:], math.Float64bits(float64(src[i])))
 				_, _ = buf.Write(data[:])
 			}
 		}

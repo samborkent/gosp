@@ -46,13 +46,15 @@ func NewCompander[F gsp.Frame[T], T gsp.Float](algorithm CompanderAlgorithm, exp
 		expand:    expand,
 	}
 
-	switch len(*new(F)) {
-	case 1:
+	switch any(*new(F)).(type) {
+	case T:
 		compander.mode = ModeMono
-	case 2:
+	case [2]T, gsp.Stereo[T]:
 		compander.mode = ModeStereo
-	default:
+	case []T, gsp.MultiChannel[T]:
 		compander.mode = ModeMultiChannel
+	default:
+		panic("gsp: NewCompander: unknown audio frame type")
 	}
 
 	return compander
@@ -61,13 +63,13 @@ func NewCompander[F gsp.Frame[T], T gsp.Float](algorithm CompanderAlgorithm, exp
 func (p *Compander[F, T]) Process(sample F) F {
 	switch p.mode {
 	case ModeMono:
-		monoSample := *(*gsp.Mono[T])(unsafe.Pointer(&sample))
+		monoSample := *(*T)(unsafe.Pointer(&sample))
 
-		absX := math.Abs(float64(monoSample.M()))
+		absX := math.Abs(float64(monoSample))
 
 		var sgnX float64
 
-		if math.Signbit(float64(monoSample.M())) {
+		if math.Signbit(float64(monoSample)) {
 			sgnX = -1
 		} else {
 			sgnX = 1
@@ -81,7 +83,7 @@ func (p *Compander[F, T]) Process(sample F) F {
 			if p.expand {
 				switch {
 				case absX < calcA1:
-					processedSample = float64(monoSample.M()) * calcA2 * invA
+					processedSample = float64(monoSample) * calcA2 * invA
 				case (absX >= calcA1) && (absX < 1):
 					processedSample = sgnX * math.Exp(-1+absX*calcA2) * invA
 				}
@@ -91,7 +93,7 @@ func (p *Compander[F, T]) Process(sample F) F {
 
 			switch {
 			case absX < invA:
-				processedSample = paramA * float64(monoSample.M()) * calcA1
+				processedSample = paramA * float64(monoSample) * calcA1
 			case (absX >= invA) && (absX < 1):
 				processedSample = sgnX * (1 + math.Log(paramA*absX)) * calcA1
 			}
@@ -110,20 +112,20 @@ func (p *Compander[F, T]) Process(sample F) F {
 		case CompanderAlgorithmSine:
 			if p.expand {
 				if absX < 1 {
-					processedSample = math.Asin(float64(monoSample.M())) * invHalfPi
+					processedSample = math.Asin(float64(monoSample)) * invHalfPi
 				}
 
 				break algoSwitch
 			}
 
 			if absX < 1 {
-				processedSample = math.Sin(halfPi * float64(monoSample.M()))
+				processedSample = math.Sin(halfPi * float64(monoSample))
 			}
 		default:
 			panic("gsp: processors: Compander: algorithm not implemented")
 		}
 
-		monoSample = gsp.ToMono(T(processedSample))
+		monoSample = T(processedSample)
 		return *(*F)(unsafe.Pointer(&monoSample))
 	case ModeStereo:
 		panic("gsp: processors: Compander: stereo processing not implemented")

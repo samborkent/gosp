@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	_ Reader[Mono[uint8], uint8] = &Converter[Mono[uint8], Mono[uint8], uint8, uint8]{}
-	_ Writer[Mono[uint8], uint8] = &Converter[Mono[uint8], Mono[uint8], uint8, uint8]{}
+	_ Reader[uint8, uint8] = &Converter[uint8, uint8, uint8, uint8]{}
+	_ Writer[uint8, uint8] = &Converter[uint8, uint8, uint8, uint8]{}
 )
 
 // Converter can converts from one data type to another.
@@ -28,7 +28,7 @@ func NewConverter[In Frame[I], Out Frame[O], I Type, O Type](bufferSize int) *Co
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	runtime.AddCleanup(converter, func(_ any) {
+	runtime.AddCleanup(converter, func(_ int) {
 		cancel()
 		close(input)
 		close(output)
@@ -132,67 +132,75 @@ func (c *Converter[In, Out, I, O]) run(ctx context.Context) {
 }
 
 func convert[In Frame[I], Out Frame[O], I Type, O Type](input In) (output Out) {
-	switch len(input) {
-	case 1: // mono input
-		switch len(output) {
-		case 1: // mono output
-			out := convertMono[O](*(*Mono[I])(unsafe.Pointer(&input)))
+	switch any(*new(In)).(type) {
+	case I: // mono input
+		switch any(*new(Out)).(type) {
+		case O: // mono -> mono
+			out := convertMono[O](*(*I)(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
-		case 2: // stereo output
-			out := convertMonoToStereo[O](*(*Mono[I])(unsafe.Pointer(&input)))
+		case [2]O, Stereo[O]: // mono -> stereo
+			out := convertMonoToStereo[O](*(*I)(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
-		default: // multi-channel output
-			out := convertMonoToMultiChannel[O](*(*Mono[I])(unsafe.Pointer(&input)))
+		case []O, MultiChannel[O]: // mono -> multi-channel
+			out := convertMonoToMultiChannel[O](*(*I)(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
+		default:
+			panic("gsp: convert: unknown output audio type")
 		}
-	case 2: // stereo input
-		switch len(output) {
-		case 1: // mono output
+	case [2]I, Stereo[I]: // stereo input
+		switch any(*new(Out)).(type) {
+		case O: // stereo -> mono
 			out := convertStereoToMono[O](*(*Stereo[I])(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
-		case 2: // stereo output
+		case [2]O, Stereo[O]: // stereo -> stereo
 			out := convertStereo[O](*(*Stereo[I])(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
-		default: // multi-channel output
+		case []O, MultiChannel[O]: // stereo -> multi-channel
 			out := convertStereoToMultiChannel[O](*(*Stereo[I])(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
+		default:
+			panic("gsp: convert: unknown output audio type")
 		}
-	default: // multi-channel input
-		switch len(output) {
-		case 1: // mono output
+	case []I, MultiChannel[I]: // multi-channel input
+		switch any(*new(Out)).(type) {
+		case O: // multi-channel -> mono
 			out := convertMultiChannelToMono[O](*(*MultiChannel[I])(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
-		case 2: // stereo output
+		case [2]O, Stereo[O]: // multi-channel -> stereo
 			out := convertMultiChannelToStereo[O](*(*MultiChannel[I])(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
-		default: // multi-channel output
+		case []O, MultiChannel[O]: // multi-channel -> multi-channel
 			out := convertMultiChannel[O](*(*MultiChannel[I])(unsafe.Pointer(&input)))
 			return *(*Out)(unsafe.Pointer(&out))
+		default:
+			panic("gsp: convert: unknown output audio type")
 		}
+	default:
+		panic("gsp: convert: unknown input audio type")
 	}
 }
 
-func convertMono[O Type, I Type](input Mono[I]) (output Mono[O]) {
-	return ToMono(ConvertType[O](input.M()))
+func convertMono[O Type, I Type](input I) (output O) {
+	return ConvertType[O](input)
 }
 
-func convertMonoToStereo[O Type, I Type](input Mono[I]) (output Stereo[O]) {
-	return MonoToStereo(ToMono(ConvertType[O](input.M())))
+func convertMonoToStereo[O Type, I Type](input I) (output Stereo[O]) {
+	return MonoToStereo(ConvertType[O](input))
 }
 
-func convertMonoToMultiChannel[O Type, I Type](input Mono[I]) (output MultiChannel[O]) {
+func convertMonoToMultiChannel[O Type, I Type](input I) (output MultiChannel[O]) {
 	if len(output) == 0 {
 		return MultiChannel[O]{}
 	}
 
 	out := ZeroMultiChannel[O](len(output))
-	out[0] = ConvertType[O](input.M())
+	out[0] = ConvertType[O](input)
 
 	return out
 }
 
-func convertStereoToMono[O Type, I Type](input Stereo[I]) (output Mono[O]) {
-	return ToMono(ConvertType[O](input.M()))
+func convertStereoToMono[O Type, I Type](input Stereo[I]) (output O) {
+	return ConvertType[O](input.M())
 }
 
 func convertStereo[O Type, I Type](input Stereo[I]) (output Stereo[O]) {
@@ -217,12 +225,12 @@ func convertStereoToMultiChannel[O Type, I Type](input Stereo[I]) (output MultiC
 	return out
 }
 
-func convertMultiChannelToMono[O Type, I Type](input MultiChannel[I]) (output Mono[O]) {
+func convertMultiChannelToMono[O Type, I Type](input MultiChannel[I]) (output O) {
 	if len(input) == 0 {
-		return ZeroMono[O]()
+		return Zero[O]()
 	}
 
-	return ToMono(ConvertType[O](input.M()))
+	return ConvertType[O](input.M())
 }
 
 func convertMultiChannelToStereo[O Type, I Type](input MultiChannel[I]) (output Stereo[O]) {
@@ -232,7 +240,7 @@ func convertMultiChannelToStereo[O Type, I Type](input MultiChannel[I]) (output 
 
 	switch len(input) {
 	case 1:
-		return MonoToStereo(ToMono(ConvertType[O](input[0])))
+		return MonoToStereo(ConvertType[O](input[0]))
 	case 2:
 		return ToStereo(ConvertType[O](input[L]), ConvertType[O](input[R]))
 	default:
@@ -261,13 +269,13 @@ func convertMultiChannel[O Type, I Type](input MultiChannel[I]) (output MultiCha
 	case 0:
 		return ZeroMultiChannel[O](len(output))
 	case 1:
-		return convertMonoToMultiChannel[O](ToMono(input[0]))
+		return convertMonoToMultiChannel[O](input[0])
 	case 2:
 		return convertStereoToMultiChannel[O](ToStereo(input[L], input[R]))
 	default:
 		switch len(output) {
 		case 1:
-			return MultiChannel[O]{convertMultiChannelToMono[O](input).M()}
+			return MultiChannel[O]{convertMultiChannelToMono[O](input)}
 		case 2:
 			out := convertMultiChannelToStereo[O](input)
 			return MultiChannel[O]{out[L], out[R]}

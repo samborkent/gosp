@@ -15,13 +15,15 @@ type Gain[F gsp.Frame[T], T gsp.Float] struct {
 func NewGain[F gsp.Frame[T], T gsp.Float](gain T) *Gain[F, T] {
 	gainProcessor := &Gain[F, T]{Gain: gsp.DBToLinear(gain)}
 
-	switch len(*new(F)) {
-	case 1:
+	switch any(*new(F)).(type) {
+	case T:
 		gainProcessor.mode = ModeMono
-	case 2:
+	case [2]T, gsp.Stereo[T]:
 		gainProcessor.mode = ModeStereo
-	default:
+	case []T, gsp.MultiChannel[T]:
 		gainProcessor.mode = ModeMultiChannel
+	default:
+		panic("gsp: NewGain: unknown audio frame type")
 	}
 
 	return gainProcessor
@@ -30,8 +32,8 @@ func NewGain[F gsp.Frame[T], T gsp.Float](gain T) *Gain[F, T] {
 func (p *Gain[F, T]) Process(sample F) F {
 	switch p.mode {
 	case ModeMono:
-		monoSample := *(*gsp.Mono[T])(unsafe.Pointer(&sample))
-		processedSample := gsp.ToMono(monoSample.M() * p.Gain)
+		monoSample := *(*T)(unsafe.Pointer(&sample))
+		processedSample := monoSample * p.Gain
 		return *(*F)(unsafe.Pointer(&processedSample))
 	case ModeStereo:
 		stereoSample := *(*gsp.Stereo[T])(unsafe.Pointer(&sample))
@@ -55,11 +57,11 @@ func (p *Gain[F, T]) ProcessBuffer(output, input []F) {
 
 	switch p.mode {
 	case ModeMono:
-		samplePtr := (*gsp.Mono[T])(unsafe.Pointer(&input[0]))
+		samplePtr := (*T)(unsafe.Pointer(&input[0]))
 		monoSamples := unsafe.Slice(samplePtr, len(input))
 
 		for i := range size {
-			processedSample := gsp.ToMono(monoSamples[i].M() * p.Gain)
+			processedSample := monoSamples[i] * p.Gain
 			output[i] = *(*F)(unsafe.Pointer(&processedSample))
 		}
 	case ModeStereo:

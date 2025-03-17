@@ -31,10 +31,25 @@ func NewDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *Decode
 		opt(&cfg)
 	}
 
+	var channels int
+
+	switch frameType := any(*new(F)).(type) {
+	case T:
+		channels = 1
+	case [2]T, Stereo[T]:
+		channels = 2
+	case []T:
+		channels = len(frameType)
+	case MultiChannel[T]:
+		channels = len(frameType)
+	default:
+		panic("gsp: NewGain: unknown audio frame type")
+	}
+
 	return &Decoder[F, T]{
 		r:           r,
 		pool:        NewByteBufferPool(),
-		channels:    len(*new(F)),
+		channels:    channels,
 		byteSize:    int(unsafe.Sizeof(T(0))),
 		bigEndian:   cfg.BigEndian,
 		initialized: true,
@@ -74,7 +89,7 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 	switch d.channels {
 	case 1:
 		// There is only a single channel, so we can safely perform this unsafe type-casting.
-		samplesDecoded := d.convertMono(unsafe.Slice((*Mono[T])(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
+		samplesDecoded := d.convertMono(unsafe.Slice((*T)(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
 		d.samplesDecoded.Add(int64(samplesDecoded))
 	case 2:
 		panic("gsp: Decoder.Decode: implement stereo decoding")
@@ -89,7 +104,7 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 }
 
 // convertMono returns the number of samples converted.
-func (d *Decoder[F, T]) convertMono(dst []Mono[T], src []byte) int {
+func (d *Decoder[F, T]) convertMono(dst []T, src []byte) int {
 	switch d.byteSize {
 	case 1: // 8 bit
 		minLen := min(len(dst), len(src))
