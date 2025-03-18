@@ -8,9 +8,6 @@ import (
 	"github.com/samborkent/gsp/internal/gmath"
 )
 
-// TODO: multi-channel processing
-// TODO: add buffer processing
-
 type CompanderAlgorithm string
 
 const (
