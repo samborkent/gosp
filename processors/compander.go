@@ -5,9 +5,11 @@ import (
 	"unsafe"
 
 	"github.com/samborkent/gsp"
+	"github.com/samborkent/gsp/internal/gmath"
 )
 
-// TODO: stereo and multi-channel processing
+// TODO: multi-channel processing
+// TODO: add buffer processing
 
 type CompanderAlgorithm string
 
@@ -65,81 +67,229 @@ func (p *Compander[F, T]) Process(sample F) F {
 	case ModeMono:
 		monoSample := *(*T)(unsafe.Pointer(&sample))
 
-		absX := math.Abs(float64(monoSample))
+		var processedSample T
 
-		var sgnX float64
-
-		if math.Signbit(float64(monoSample)) {
-			sgnX = -1
-		} else {
-			sgnX = 1
-		}
-
-		processedSample := sgnX
-
-	algoSwitch:
 		switch p.algorithm {
 		case CompanderAlgorithmALaw:
-			if p.expand {
-				switch {
-				case absX < calcA1:
-					processedSample = float64(monoSample) * calcA2 * invA
-				case (absX >= calcA1) && (absX < 1):
-					processedSample = sgnX * math.Exp(-1+absX*calcA2) * invA
-				}
+			processedSample = p.processALaw(monoSample)
+		case CompanderAlgorithmMuLaw:
+			processedSample = p.processMuLaw(monoSample)
+		case CompanderAlgorithmSine:
+			processedSample = p.processSine(monoSample)
+		default:
+			panic("gsp: processors: Compander: algorithm not implemented")
+		}
 
-				break algoSwitch
-			}
+		return *(*F)(unsafe.Pointer(&processedSample))
+	case ModeStereo:
+		stereoSample := *(*gsp.Stereo[T])(unsafe.Pointer(&sample))
 
-			switch {
-			case absX < invA:
-				processedSample = paramA * float64(monoSample) * calcA1
-			case (absX >= invA) && (absX < 1):
-				processedSample = sgnX * (1 + math.Log(paramA*absX)) * calcA1
+		var processedSamples [2]T
+
+		switch p.algorithm {
+		case CompanderAlgorithmALaw:
+			processedSamples[gsp.L] = p.processALaw(stereoSample.L())
+			processedSamples[gsp.R] = p.processALaw(stereoSample.R())
+		case CompanderAlgorithmMuLaw:
+			processedSamples[gsp.L] = p.processMuLaw(stereoSample.L())
+			processedSamples[gsp.R] = p.processMuLaw(stereoSample.R())
+		case CompanderAlgorithmSine:
+			processedSamples[gsp.L] = p.processSine(stereoSample.L())
+			processedSamples[gsp.R] = p.processSine(stereoSample.R())
+		default:
+			panic("gsp: processors: Compander: algorithm not implemented")
+		}
+
+		return *(*F)(unsafe.Pointer(&processedSamples))
+	case ModeMultiChannel:
+		multiChannelSample := *(*gsp.MultiChannel[T])(unsafe.Pointer(&sample))
+
+		processedSamples := make([]T, len(multiChannelSample))
+
+		switch p.algorithm {
+		case CompanderAlgorithmALaw:
+			for i := range multiChannelSample {
+				processedSamples[i] = p.processALaw(multiChannelSample[i])
 			}
 		case CompanderAlgorithmMuLaw:
-			if p.expand {
-				if absX < 1 {
-					processedSample = sgnX * ((math.Pow(1+paramMu, absX)) - 1) * invMu
-				}
-
-				break algoSwitch
-			}
-
-			if absX < 1 {
-				processedSample = sgnX * math.Log(1+paramMu*absX) * calcMu
+			for i := range multiChannelSample {
+				processedSamples[i] = p.processMuLaw(multiChannelSample[i])
 			}
 		case CompanderAlgorithmSine:
-			if p.expand {
-				if absX < 1 {
-					processedSample = math.Asin(float64(monoSample)) * invHalfPi
-				}
-
-				break algoSwitch
-			}
-
-			if absX < 1 {
-				processedSample = math.Sin(halfPi * float64(monoSample))
+			for i := range multiChannelSample {
+				processedSamples[i] = p.processSine(multiChannelSample[i])
 			}
 		default:
 			panic("gsp: processors: Compander: algorithm not implemented")
 		}
 
-		monoSample = T(processedSample)
-		return *(*F)(unsafe.Pointer(&monoSample))
-	case ModeStereo:
-		panic("gsp: processors: Compander: stereo processing not implemented")
-	case ModeMultiChannel:
-		panic("gsp: processors: Compander: multi-channel processing not implemented")
+		return *(*F)(unsafe.Pointer(&processedSamples))
 	default:
 		return *new(F)
 	}
 }
 
-// func (p *Compander[float]) ProcessBuffer(samples []float) []float {
-// 	for i := range samples {
-// 		samples[i] = p.Process(samples[i])
-// 	}
+func (p *Compander[F, T]) ProcessBuffer(output, input []F) {
+	size := min(len(output), len(input))
+	if size == 0 {
+		return
+	}
 
-// 	return samples
-// }
+	switch p.mode {
+	case ModeMono:
+		samplePtr := (*T)(unsafe.Pointer(&input[0]))
+		monoSamples := unsafe.Slice(samplePtr, len(input))
+
+		switch p.algorithm {
+		case CompanderAlgorithmALaw:
+			for i := range size {
+				processedSample := p.processALaw(monoSamples[i])
+				output[i] = *(*F)(unsafe.Pointer(&processedSample))
+			}
+		case CompanderAlgorithmMuLaw:
+			for i := range size {
+				processedSample := p.processMuLaw(monoSamples[i])
+				output[i] = *(*F)(unsafe.Pointer(&processedSample))
+			}
+		case CompanderAlgorithmSine:
+			for i := range size {
+				processedSample := p.processSine(monoSamples[i])
+				output[i] = *(*F)(unsafe.Pointer(&processedSample))
+			}
+		default:
+			panic("gsp: processors: Compander: algorithm not implemented")
+		}
+	case ModeStereo:
+		samplePtr := (*gsp.Stereo[T])(unsafe.Pointer(&input[0]))
+		stereoSamples := unsafe.Slice(samplePtr, len(input))
+
+		switch p.algorithm {
+		case CompanderAlgorithmALaw:
+			for i := range size {
+				processedSamples := [2]T{p.processALaw(stereoSamples[i].L()), p.processALaw(stereoSamples[i].R())}
+				output[i] = *(*F)(unsafe.Pointer(&processedSamples))
+			}
+		case CompanderAlgorithmMuLaw:
+			for i := range size {
+				processedSamples := [2]T{p.processMuLaw(stereoSamples[i].L()), p.processMuLaw(stereoSamples[i].R())}
+				output[i] = *(*F)(unsafe.Pointer(&processedSamples))
+			}
+		case CompanderAlgorithmSine:
+			for i := range size {
+				processedSamples := [2]T{p.processSine(stereoSamples[i].L()), p.processSine(stereoSamples[i].R())}
+				output[i] = *(*F)(unsafe.Pointer(&processedSamples))
+			}
+		default:
+			panic("gsp: processors: Compander: algorithm not implemented")
+		}
+	case ModeMultiChannel:
+		samplePtr := (*gsp.MultiChannel[T])(unsafe.Pointer(&input[0]))
+		multiChannelSamples := unsafe.Slice(samplePtr, len(input))
+
+		switch p.algorithm {
+		case CompanderAlgorithmALaw:
+
+			for i := range size {
+				processedSamples := make([]T, len(multiChannelSamples[i])) // TODO: use pool
+
+				for j := range multiChannelSamples[i] {
+					processedSamples[j] = p.processALaw(multiChannelSamples[i][j])
+				}
+
+				output[i] = *(*F)(unsafe.Pointer(&processedSamples))
+			}
+		case CompanderAlgorithmMuLaw:
+			for i := range size {
+				processedSamples := make([]T, len(multiChannelSamples[i])) // TODO: use pool
+
+				for j := range multiChannelSamples[i] {
+					processedSamples[j] = p.processMuLaw(multiChannelSamples[i][j])
+				}
+
+				output[i] = *(*F)(unsafe.Pointer(&processedSamples))
+			}
+		case CompanderAlgorithmSine:
+			for i := range size {
+				processedSamples := make([]T, len(multiChannelSamples[i])) // TODO: use pool
+
+				for j := range multiChannelSamples[i] {
+					processedSamples[j] = p.processSine(multiChannelSamples[i][j])
+				}
+
+				output[i] = *(*F)(unsafe.Pointer(&processedSamples))
+			}
+		default:
+			panic("gsp: processors: Compander: algorithm not implemented")
+		}
+	}
+}
+
+func (p *Compander[F, T]) processALaw(sample T) T {
+	abs, sgn := absSgn(sample)
+
+	if p.expand {
+		switch {
+		case abs < T(calcA1):
+			return sample * T(calcA2) * invA
+		case (abs >= T(calcA1)) && (abs < 1):
+			return sgn * T(math.Exp(-1+float64(abs)*calcA2)*invA)
+		default:
+			return sgn
+		}
+	}
+
+	switch {
+	case abs < invA:
+		return paramA * sample * T(calcA1)
+	case (abs >= invA) && (abs < 1):
+		return sgn * T((1+math.Log(paramA*float64(abs)))*calcA1)
+	default:
+		return sgn
+	}
+}
+
+func (p *Compander[F, T]) processMuLaw(sample T) T {
+	abs, sgn := absSgn(sample)
+
+	if p.expand {
+		if abs < 1 {
+			return sgn * (T(math.Pow(1+paramMu, float64(abs))) - 1) * invMu
+		}
+
+		return sgn
+	}
+
+	if abs < 1 {
+		return sgn * T(math.Log(1+paramMu*float64(abs))*calcMu)
+	}
+
+	return sgn
+}
+
+func (p *Compander[F, T]) processSine(sample T) T {
+	abs, sgn := absSgn(sample)
+
+	if p.expand {
+		if abs < 1 {
+			return T(math.Asin(float64(sample))) * invHalfPi
+		}
+
+		return sgn
+	}
+
+	if abs < 1 {
+		return T(math.Sin(halfPi * float64(sample)))
+	}
+
+	return sgn
+}
+
+func absSgn[T gsp.Float](sample T) (T, T) {
+	absX := gmath.Abs(sample)
+
+	if gmath.Signbit(sample) {
+		return absX, -1
+	} else {
+		return absX, 1
+	}
+}

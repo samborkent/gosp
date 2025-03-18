@@ -50,7 +50,6 @@ func (p *Gain[F, T]) Process(sample F) F {
 
 func (p *Gain[F, T]) ProcessBuffer(output, input []F) {
 	size := min(len(output), len(input))
-
 	if size == 0 {
 		return
 	}
