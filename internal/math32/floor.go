@@ -14,9 +14,9 @@ package math32
 //	Floor(±Inf) = ±Inf
 //	Floor(NaN) = NaN
 func Floor(x float32) float32 {
-	if haveArchFloor {
-		return archFloor(x)
-	}
+	// if haveArchFloor {
+	// 	return archFloor(x)
+	// }
 
 	return floor(x)
 }
@@ -25,13 +25,16 @@ func floor(x float32) float32 {
 	if x == 0 || IsNaN(x) || IsInf(x, 0) {
 		return x
 	}
+
 	if x < 0 {
 		d, fract := Modf(-x)
 		if fract != 0.0 {
 			d = d + 1
 		}
+
 		return -d
 	}
+
 	d, _ := Modf(x)
 	return d
 }

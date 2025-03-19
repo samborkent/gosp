@@ -16,9 +16,10 @@ import "math"
 //	Modf(±Inf) = ±Inf, NaN
 //	Modf(NaN) = NaN, NaN
 func Modf(f float32) (integer, frac float32) {
-	if haveArchModf {
-		return archModf(f)
-	}
+	// if haveArchModf {
+	// 	return archModf(f)
+	// }
+
 	return modf(f)
 }
 
@@ -31,6 +32,7 @@ func modf(f float32) (integer, frac float32) {
 		case f == 0:
 			return f, f // Return -0, -0 when f == -0
 		}
+
 		return 0, f
 	}
 
@@ -41,7 +43,6 @@ func modf(f float32) (integer, frac float32) {
 	if e < bitLen-expLen-sgnLen {
 		x &^= 1<<(bitLen-expLen-sgnLen-e) - 1
 	}
-	integer = math.Float32frombits(x)
-	frac = f - integer
-	return
+
+	return math.Float32frombits(x), f - integer
 }

@@ -6,6 +6,11 @@
 
 package math32
 
+import "math"
+
+// NaN returns an IEEE 754 “not-a-number” value.
+func NaN() float32 { return math.Float32frombits(uvnan) }
+
 // IsNaN reports whether f is an IEEE 754 “not-a-number” value.
 func IsNaN(f float32) (is bool) {
 	// IEEE 754 says that only NaNs satisfy f != f.

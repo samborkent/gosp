@@ -9,7 +9,11 @@ const (
 	mask     = (1 << expLen) - sgnLen
 	bias     = (1 << (expLen - sgnLen)) - 1
 	signMask = 1 << (bitLen - sgnLen)
-	uvone    = 0x3F800000
 	half     = 1 << (shift - 1)
 	fracMask = (1 << shift) - 1
+
+	uvnan    = 0x7FC00001
+	uvinf    = 0x7F800000
+	uvneginf = 0xFF800000
+	uvone    = 0x3F800000
 )

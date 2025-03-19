@@ -8,6 +8,17 @@ package math32
 
 import "math"
 
+// Inf returns positive infinity if sign >= 0, negative infinity if sign < 0.
+func Inf(sign int) float32 {
+	var v uint32
+	if sign >= 0 {
+		v = uvinf
+	} else {
+		v = uvneginf
+	}
+	return math.Float32frombits(v)
+}
+
 // IsInf reports whether f is an infinity, according to sign.
 // If sign > 0, IsInf reports whether f is positive infinity.
 // If sign < 0, IsInf reports whether f is negative infinity.
