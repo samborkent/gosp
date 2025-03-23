@@ -11,13 +11,16 @@ import (
 	"unsafe"
 )
 
+const decoderMinRead = 128
+
 var ErrDecoderNotinitialized = errors.New("gsp: Decoder: not initialized")
 
 // Decoder is a linear PCM and floating-point decoder.
 // This decoder can convert binary data into samples.
 type Decoder[F Frame[T], T Type] struct {
 	r                         io.Reader
-	pool                      *ByteBufferPool
+	bytePool                  *ByteBufferPool
+	samplePool                *Pool[F, T]
 	bytesRead, samplesDecoded atomic.Int64
 	channels, byteSize        int
 	bigEndian                 bool
@@ -43,12 +46,13 @@ func NewDecoder[F Frame[T], T Type](r io.Reader, opts ...EncodingOption) *Decode
 	case MultiChannel[T]:
 		channels = len(frameType)
 	default:
-		panic("gsp: NewGain: unknown audio frame type")
+		panic("gsp: NewDecoder: unknown audio frame type")
 	}
 
 	return &Decoder[F, T]{
 		r:           r,
-		pool:        NewByteBufferPool(),
+		bytePool:    NewByteBufferPool(),
+		samplePool:  NewPool[F, T](),
 		channels:    channels,
 		byteSize:    int(unsafe.Sizeof(T(0))),
 		bigEndian:   cfg.BigEndian,
@@ -72,11 +76,14 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 	}
 
 	// Retrieve byte buffer from pool.
-	buf := d.pool.Get()
+	buf := d.bytePool.Get()
 	if buf == nil {
 		// Allocate in-case the pool does not have a pre-allocated entry ready.
 		buf = bytes.NewBuffer(make([]byte, len(s)*d.channels*d.byteSize))
 	}
+
+	// Put buffer back in pool.
+	defer d.bytePool.Put(buf)
 
 	// TODO: check if there is a way to only read up to len(s)
 	bytesRead, err := buf.ReadFrom(d.r)
@@ -89,7 +96,7 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 	switch d.channels {
 	case 1:
 		// There is only a single channel, so we can safely perform this unsafe type-casting.
-		samplesDecoded := d.convertMono(unsafe.Slice((*T)(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
+		samplesDecoded := d.decodeMono(unsafe.Slice((*T)(unsafe.Pointer(&s[0])), len(s)), buf.Bytes())
 		d.samplesDecoded.Add(int64(samplesDecoded))
 	case 2:
 		panic("gsp: Decoder.Decode: implement stereo decoding")
@@ -97,14 +104,63 @@ func (d *Decoder[F, T]) Decode(s []F) error {
 		panic("gsp: Decoder.Decode: implement multi-channel decoding")
 	}
 
+	return nil
+}
+
+// Decode reads from the internal [io.Reader] and decodes into the [Writer].
+//
+// TODO: can probably be improved, ideally should rely on same logic as Decode (see EncodeFrom).
+func (d *Decoder[F, T]) DecodeTo(w Writer[F, T]) error {
+	if !d.initialized {
+		return ErrDecoderNotinitialized
+	}
+
+	// Retrieve byte buffer from pool.
+	buf := d.bytePool.Get()
+	if buf == nil {
+		// Allocate in-case the pool does not have a pre-allocated entry ready.
+		buf = bytes.NewBuffer(make([]byte, decoderMinRead*d.channels*d.byteSize))
+	}
+
 	// Put buffer back in pool.
-	d.pool.Put(buf)
+	defer d.bytePool.Put(buf)
+
+	bytesRead, err := buf.ReadFrom(d.r)
+	if err != nil {
+		return fmt.Errorf("gsp: Decoder.DecodeTo: reading bytes into buffer: %w", err)
+	}
+
+	d.bytesRead.Add(int64(bytesRead))
+
+	sampleBuf := d.samplePool.Get()
+	if sampleBuf == nil {
+		// Allocate in-case the pool does not have a pre-allocated entry ready.
+		sampleBuf = NewBuffer[F, T](make([]F, decoderMinRead))
+	}
+
+	defer d.samplePool.Put(sampleBuf)
+
+	switch d.channels {
+	case 1:
+		// There is only a single channel, so we can safely perform this unsafe type-casting.
+		_ = d.decodeMono(unsafe.Slice((*T)(unsafe.Pointer(&sampleBuf.Frames()[0])), sampleBuf.Len()), buf.Bytes())
+	case 2:
+		panic("gsp: Decoder.DecodeTo: implement stereo decoding")
+	default:
+		panic("gsp: Decoder.DecodeTo: implement multi-channel decoding")
+	}
+
+	samplesDecoded, err := w.Write(sampleBuf.Frames())
+	if err != nil {
+		return fmt.Errorf("gsp: Decoder.DecodeTo: writing frames: %w", err)
+	}
+
+	d.samplesDecoded.Add(int64(samplesDecoded))
 
 	return nil
 }
 
-// convertMono returns the number of samples converted.
-func (d *Decoder[F, T]) convertMono(dst []T, src []byte) int {
+func (d *Decoder[F, T]) decodeMono(dst []T, src []byte) int {
 	switch d.byteSize {
 	case 1: // 8 bit
 		minLen := min(len(dst), len(src))

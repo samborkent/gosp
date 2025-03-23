@@ -11,13 +11,16 @@ import (
 	"unsafe"
 )
 
+const encoderMinRead = 512
+
 var ErrEncoderNotinitialized = errors.New("gsp: Encoder: not initialized")
 
 // Encoder is a linear PCM and floating-point encoder.
 // This encoder can convert samples into their binary representation.
 type Encoder[F Frame[T], T Type] struct {
 	w                            io.Writer
-	pool                         *ByteBufferPool
+	bytePool                     *ByteBufferPool
+	samplePool                   *Pool[F, T]
 	samplesEncoded, bytesWritten atomic.Int64
 	channels, byteSize           int
 	bigEndian                    bool
@@ -48,7 +51,8 @@ func NewEncoder[F Frame[T], T Type](w io.Writer, opts ...EncodingOption) *Encode
 
 	return &Encoder[F, T]{
 		w:           w,
-		pool:        NewByteBufferPool(),
+		bytePool:    NewByteBufferPool(),
+		samplePool:  NewPool[F, T](),
 		channels:    channels,
 		byteSize:    int(unsafe.Sizeof(T(0))),
 		bigEndian:   cfg.BigEndian,
@@ -70,16 +74,18 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 		return ErrDecoderNotinitialized
 	}
 
-	buf := e.pool.Get()
+	buf := e.bytePool.Get()
 	if buf == nil {
 		// Allocate in-case the pool does not have a pre-allocated entry ready.
 		buf = bytes.NewBuffer(make([]byte, len(s)*e.channels*e.byteSize))
 	}
 
+	defer e.bytePool.Put(buf)
+
 	switch e.channels {
 	case 1:
 		// There is only a single channel, so we can safely perform this unsafe type-casting.
-		samplesEncoded := e.convertMono(buf, unsafe.Slice((*T)(unsafe.Pointer(&s[0])), len(s)))
+		samplesEncoded := e.encodeMono(buf, unsafe.Slice((*T)(unsafe.Pointer(&s[0])), len(s)))
 		e.samplesEncoded.Add(int64(samplesEncoded))
 	case 2:
 		panic("gsp: Encoder.Encode: stereo encoding not implemented")
@@ -93,13 +99,34 @@ func (e *Encoder[F, T]) Encode(s []F) error {
 	}
 
 	e.bytesWritten.Add(int64(bytesWritten))
-	e.pool.Put(buf)
 
 	return nil
 }
 
-// convertMono writes the encoded sampled to the internal [io.Writer].
-func (e *Encoder[F, T]) convertMono(buf *bytes.Buffer, src []T) int {
+// Encode EncodeFrom from the [Reader] and decodes into the internal [io.Writer].
+func (e *Encoder[F, T]) EncodeFrom(r Reader[F, T]) error {
+	if !e.initialized {
+		return ErrDecoderNotinitialized
+	}
+
+	sampleBuf := e.samplePool.Get()
+	if sampleBuf == nil {
+		// Allocate in-case the pool does not have a pre-allocated entry ready.
+		sampleBuf = NewBuffer[F, T](make([]F, encoderMinRead))
+	}
+
+	defer e.samplePool.Put(sampleBuf)
+
+	_, err := sampleBuf.ReadFrom(r)
+	if err != nil {
+		return fmt.Errorf("gsp: Encoder.EncodeFrom: reading from gsp.Reader: %w", err)
+	}
+
+	return e.Encode(sampleBuf.Frames())
+}
+
+// encodeMono writes the encoded sampled to the internal [io.Writer].
+func (e *Encoder[F, T]) encodeMono(buf *bytes.Buffer, src []T) int {
 	switch e.byteSize {
 	case 1: // 8 bit
 		// Abuse overflow rules to deduce specific type.

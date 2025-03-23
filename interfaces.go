@@ -2,18 +2,26 @@ package gsp
 
 // Implementations must not retain p.
 type Reader[F Frame[T], T Type] interface {
-	Read(p []F) (framesRead int, err error)
+	Read(buffer []F) (framesRead int, err error)
 }
 
 // Implementations must not retain p.
 type Writer[F Frame[T], T Type] interface {
-	Write(p []F) (framesWrtie int, err error)
+	Write(buffer []F) (framesWritten int, err error)
 }
 
-type SampleReader[F Frame[T], T Type] interface {
-	ReadSample() (sample F)
+type ReaderFrom[F Frame[T], T Type] interface {
+	ReadFrom(r Reader[F, T]) (framesRead int64, err error)
 }
 
-type SampleWriter[F Frame[T], T Type] interface {
-	WriteSample(sample F)
+type WriterTo[F Frame[T], T Type] interface {
+	WriteTo(w Writer[F, T]) (framesWritten int64, err error)
+}
+
+type FrameReader[F Frame[T], T Type] interface {
+	ReadFrame() (frame F)
+}
+
+type FrameWriter[F Frame[T], T Type] interface {
+	WriteFrame(frame F)
 }
