@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/samborkent/gsp/internal/math32"
+	"github.com/samborkent/math32"
 )
 
 func TestQuantize32(t *testing.T) {

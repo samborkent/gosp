@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/exp/constraints"
 
-	math32 "github.com/samborkent/gsp/internal/math32"
+	math32 "github.com/samborkent/math32"
 )
 
 // Signbit reports whether x is negative or negative zero.

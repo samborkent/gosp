@@ -5,7 +5,7 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/samborkent/gsp/internal/math32"
+	"github.com/samborkent/math32"
 )
 
 // TODO: fix scaling of

@@ -1,2 +1,4 @@
+github.com/samborkent/math32 v0.0.0-20250323115343-c8c19cde57a1 h1:hIU+FSiiK0tqWCjxChrwkIXv8da+nZue9wNnTNERLUk=
+github.com/samborkent/math32 v0.0.0-20250323115343-c8c19cde57a1/go.mod h1:un2SVCvIHQsEoW4fNDvfG+BjNI51nR+C5fUrdzrw4j0=
 golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 h1:nDVHiLt8aIbd/VzvPWN6kSOPE7+F/fNFDSXLVYkE/Iw=
 golang.org/x/exp v0.0.0-20250305212735-054e65f0b394/go.mod h1:sIifuuw/Yco/y6yb6+bDNfyeQ/MdPUy/hKEMYQV17cM=
